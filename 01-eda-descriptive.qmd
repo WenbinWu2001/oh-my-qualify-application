@@ -1,0 +1,152 @@
+---
+title: "1. Exploratory and descriptive analysis"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+## 1. Aim
+
+Exploratory longitudinal analysis estimates the observed mean profile, between-subject heterogeneity, within-subject covariance by lag, and the support of the observation process before a model is imposed. The principal targets are $E(Y_{ij}\mid G_i,t_{ij})$, $\operatorname{Cov}(Y_{ij},Y_{ik}\mid G_i)$, and the empirical distribution of missingness patterns.
+
+## 2. Model specification
+
+For descriptive purposes write
+$$
+Y_{ij}=\mu_{G_i}(t_{ij})+\varepsilon_{ij},\qquad
+\gamma(h)=\tfrac12 E\{(\varepsilon_i(t+h)-\varepsilon_i(t))^2\}.
+$$
+The empirical variogram estimates $\gamma(h)$; the time-indexed sample covariance matrix estimates $\Sigma=(\sigma_{jk})$ only from subjects observed at the relevant pairs of occasions.
+
+## 3. R packages/functions
+
+`ggplot2` supplies profile and mean-profile graphics; `dplyr`/`tidyr` supply subject-time summaries and wide matrices; `nlme::Variogram()` computes a residual semivariogram; `naniar` supplies optional graphical missingness summaries.
+
+## 4. Data
+
+`nlme::Orthodont` has one row per subject-age occasion: 27 subjects, four planned ages, sex, and orthodontic distance.
+
+```{r}
+data("Orthodont", package = "nlme")
+orth <- as.data.frame(Orthodont) |>
+  mutate(Subject = factor(Subject), age_f = factor(age))
+dplyr::glimpse(orth)
+```
+
+## 5. Fit
+
+### Individual profiles and group means $\pm$ SE
+
+```{r}
+ggplot(orth, aes(age, distance, group = Subject, color = Sex)) +
+  geom_line(alpha = 0.45, linewidth = 0.5) +
+  geom_point(alpha = 0.65, size = 1) +
+  facet_wrap(~Sex) +
+  labs(y = "Orthodontic distance")
+
+mean_profile <- orth |>
+  group_by(Sex, age) |>
+  summarize(
+    n = sum(!is.na(distance)),
+    mean = mean(distance, na.rm = TRUE),
+    se = sd(distance, na.rm = TRUE) / sqrt(n),
+    .groups = "drop"
+  )
+
+ggplot(mean_profile, aes(age, mean, color = Sex, fill = Sex)) +
+  geom_ribbon(aes(ymin = mean - se, ymax = mean + se), alpha = 0.18, color = NA) +
+  geom_line(linewidth = 0.9) + geom_point() +
+  labs(y = "Mean distance (pointwise mean +/- SE)")
+```
+
+### Sample covariance/correlation over time
+
+```{r}
+orth_wide <- orth |>
+  select(Subject, age_f, distance) |>
+  pivot_wider(names_from = age_f, values_from = distance)
+
+Y <- as.matrix(orth_wide[-1])
+round(stats::cov(Y, use = "pairwise.complete.obs"), 3)
+round(stats::cor(Y, use = "pairwise.complete.obs"), 3)
+```
+
+### Empirical residual variogram
+
+```{r}
+eda_gls <- nlme::gls(distance ~ Sex * age, data = orth, method = "REML")
+vg <- nlme::Variogram(eda_gls, form = ~ age | Subject, resType = "normalized")
+vg
+plot(vg, smooth = TRUE)
+```
+
+### Missing-data patterns
+
+```{r}
+# Reproducible incomplete copy; the source dataset remains unchanged.
+orth_miss <- orth |>
+  mutate(
+    distance = replace(distance, Subject %in% levels(Subject)[1:3] & age >= 12, NA_real_),
+    distance = replace(distance, Subject %in% levels(Subject)[4:5] & age == 10, NA_real_)
+  )
+
+miss_matrix <- orth_miss |>
+  select(Subject, age_f, distance) |>
+  pivot_wider(names_from = age_f, values_from = distance) |>
+  arrange(Subject)
+
+pattern_table <- miss_matrix |>
+  mutate(pattern = apply(!is.na(pick(-Subject)), 1, paste0, collapse = "")) |>
+  count(pattern, name = "subjects", sort = TRUE)
+pattern_table
+
+if (requireNamespace("naniar", quietly = TRUE)) {
+  naniar::vis_miss(miss_matrix)
+}
+```
+
+## 6. Extract & interpret
+
+The spaghetti plot displays subject-level trajectory heterogeneity; the mean-profile interaction is read from nonparallel group curves, not from overlapping pointwise SE bands. Diagonal covariance entries are occasion-specific variances; off-diagonal entries and correlations summarize pairwise within-subject dependence. An increasing semivariogram indicates diminishing residual association with temporal separation. Pattern strings use `1 = observed`, `0 = missing` in increasing-age order.
+
+## 7. Diagnostics
+
+```{r}
+orth |>
+  count(Subject, name = "n_visit") |>
+  summarize(min_visits = min(n_visit), max_visits = max(n_visit))
+
+orth |>
+  count(Subject, age) |>
+  filter(n != 1L)                         # duplicate or absent subject-time keys
+
+colSums(!is.na(Y))                        # pairwise support differs if data are incomplete
+```
+
+Confirm subject-time uniqueness, ordering, visit support, and whether scheduled time differs materially from actual time before estimating a covariance by lag.
+
+## 8. Caveats
+
+- Pointwise SEs describe uncertainty in observed group means; they are not simultaneous bands and do not test a group-by-time interaction.
+- Pairwise covariance matrices under missingness can fail to be positive semidefinite because entries use different subject subsets.
+- A raw-response variogram confounds mean misspecification with dependence; compute it from residuals of a sufficiently rich mean model.
+- `naniar` is a visualization layer; mechanism labels (MCAR/MAR/MNAR) are assumptions, not identifiable from a missingness plot.
+- **Source-backed:** profile, mean, covariance, and missing-pattern workflows follow the BIOS 767 materials. **Standard-practice addition:** the `naniar` plot and explicit key/support checks are idiomatic R additions.
+
+## 9. Source references
+
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-001.pdf`, pp. 14--22 (longitudinal organization and exploratory profiles).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/02-HW3-Data-Visualizations.sas`, lines 24--119 (spaghetti plots, mean profiles, timing variability).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Wenbin/Assignment1/2026-01-16_descriptive_stat.R`, lines 16--90 (R profiles and mean +/- SE).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-012.pdf`, pp. 26--30 (empirical variogram/residual correlation diagnostics).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-018-1.pdf`, pp. 8--13 and 24 (missingness patterns).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf`, pp. 2--5 (dropout and intermittent patterns).
+

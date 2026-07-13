@@ -1,0 +1,217 @@
+---
+title: "7. Missing longitudinal data"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(tidyr)
+library(lme4)
+```
+
+## 1. Aim
+
+Missing-data analysis targets the full-data estimand under an explicit observation-process assumption. Likelihood/MI methods are generally valid under MAR given an adequate joint or imputation model; ordinary GEE typically requires MCAR, whereas inverse-probability-weighted GEE can be valid under correctly modeled MAR dropout. MNAR requires an unverifiable selection, pattern-mixture, shared-parameter, or sensitivity model.
+
+## 2. Model specification
+
+Let $R_{ij}=1$ indicate observation. Mechanisms are
+$$
+\begin{aligned}
+\text{MCAR: }&P(R\mid Y_{obs},Y_{mis},X)=P(R\mid X),\\
+\text{MAR: }&P(R\mid Y_{obs},Y_{mis},X)=P(R\mid Y_{obs},X),\\
+\text{MNAR: }&P(R\mid Y_{obs},Y_{mis},X)\text{ depends on }Y_{mis}.
+\end{aligned}
+$$
+MI combines $m$ estimates with
+$$
+\bar Q=m^{-1}\sum Q_k,\quad T=\bar U+(1+m^{-1})B.
+$$
+For monotone dropout, IPW solves $\sum_i D_i^{\mathsf T}V_i^{-1}W_i(Y_i-\mu_i)=0$, where $W_i$ contains inverse estimated observation probabilities.
+
+## 3. R packages/functions
+
+`mice` performs multiple imputation and Rubin pooling; wide-format imputation is often convenient for a small fixed visit grid. `geepack` accepts observation/dropout weights. `tidyr::fill()` demonstrates LOCF but does not make it valid. `naniar` visualizes patterns.
+
+## 4. Data
+
+An incomplete version of `nlme::Orthodont` is generated reproducibly with monotone dropout after age 10 depending on observed age-10 distance and sex; this is MAR by construction.
+
+```{r}
+data("Orthodont", package = "nlme")
+orth <- as.data.frame(Orthodont) |>
+  arrange(Subject, age) |>
+  mutate(Subject = factor(Subject), male = as.integer(Sex == "Male"), age_c = age - 8)
+
+set.seed(767)
+drop_info <- orth |>
+  filter(age == 10) |>
+  transmute(
+    Subject,
+    p_drop = plogis(-0.8 + 0.35 * (distance - mean(distance)) + 0.35 * male),
+    dropout = rbinom(n(), 1, p_drop)
+  )
+
+orth_miss <- orth |>
+  left_join(drop_info, by = "Subject") |>
+  mutate(distance_obs = ifelse(dropout == 1 & age >= 12, NA_real_, distance))
+with(orth_miss, table(age, is.na(distance_obs)))
+```
+
+## 5. Fit
+
+### LOCF (display only; not the primary analysis)
+
+```{r}
+locf_data <- orth_miss |>
+  group_by(Subject) |>
+  mutate(distance_locf = distance_obs) |>
+  fill(distance_locf, .direction = "down") |>
+  ungroup()
+head(locf_data[is.na(locf_data$distance_obs), c("Subject", "age", "distance_obs", "distance_locf")])
+```
+
+### Multiple imputation in wide visit format
+
+```{r}
+wide_miss <- orth_miss |>
+  select(Subject, male, age, distance_obs) |>
+  pivot_wider(names_from = age, values_from = distance_obs, names_prefix = "d") |>
+  mutate(Subject = as.integer(Subject))
+
+if (requireNamespace("mice", quietly = TRUE)) {
+  ini <- mice::mice(wide_miss, maxit = 0, printFlag = FALSE)
+  meth <- ini$method
+  pred <- ini$predictorMatrix
+  meth[c("Subject", "male")] <- ""
+  pred[, "Subject"] <- 0
+  pred["male", ] <- 0
+
+  imp <- mice::mice(
+    wide_miss, m = 10, maxit = 10,
+    method = meth, predictorMatrix = pred,
+    seed = 767, printFlag = FALSE
+  )
+
+  fits <- lapply(seq_len(imp$m), function(k) {
+    mice::complete(imp, k) |>
+      pivot_longer(starts_with("d"), names_to = "age", values_to = "distance") |>
+      mutate(age = as.numeric(sub("d", "", age)), age_c = age - 8, Subject = factor(Subject)) |>
+      lmer(distance ~ male * age_c + (1 | Subject), data = _, REML = FALSE)
+  })
+  mi_pool <- mice::pool(mice::as.mira(fits))
+  summary(mi_pool, conf.int = TRUE)
+}
+```
+
+### Observed-data EM estimate under multivariate normality
+
+```{r}
+if (requireNamespace("norm", quietly = TRUE)) {
+  y_wide <- as.matrix(wide_miss[c("d8", "d10", "d12", "d14")])
+  prelim <- norm::prelim.norm(y_wide)
+  theta_em <- norm::em.norm(prelim, showits = FALSE)
+  em_parameters <- norm::getparam.norm(prelim, theta_em)
+  em_parameters$mu
+  em_parameters$sigma
+}
+```
+
+### Pattern-mixture sensitivity parameterization
+
+```{r}
+pattern_fit <- lmer(
+  distance_obs ~ male + age_c * factor(dropout) + (1 | Subject),
+  data = orth_miss, REML = FALSE
+)
+summary(pattern_fit)
+```
+
+### Dropout model and weighted GEE
+
+```{r}
+ipw_dat <- orth_miss |>
+  group_by(Subject) |>
+  mutate(
+    visit = row_number(),
+    R = as.integer(!is.na(distance_obs)),
+    lag_y = lag(distance_obs),
+    at_risk = lag(R, default = 1L) == 1L
+  ) |>
+  ungroup()
+
+den_fit <- glm(
+  R ~ male + age_c + lag_y,
+  family = binomial,
+  data = filter(ipw_dat, visit > 1, at_risk)
+)
+num_fit <- glm(
+  R ~ male + age_c,
+  family = binomial,
+  data = filter(ipw_dat, visit > 1, at_risk)
+)
+
+risk_rows <- which(ipw_dat$visit > 1 & ipw_dat$at_risk)
+ipw_dat$p_den <- 1
+ipw_dat$p_num <- 1
+ipw_dat$p_den[risk_rows] <- pmax(predict(den_fit, type = "response"), 0.02)
+ipw_dat$p_num[risk_rows] <- pmax(predict(num_fit, type = "response"), 0.02)
+ipw_dat <- ipw_dat |>
+  group_by(Subject) |>
+  mutate(sw = cumprod(ifelse(R == 1, p_num / p_den, 1))) |>
+  ungroup()
+
+if (requireNamespace("geepack", quietly = TRUE)) {
+  wg <- geepack::geeglm(
+    distance_obs ~ male * age_c,
+    id = Subject, waves = visit, weights = sw,
+    data = filter(ipw_dat, R == 1),
+    family = gaussian, corstr = "independence"
+  )
+  summary(wg)
+}
+```
+
+## 6. Extract & interpret
+
+MI estimates combine across completed datasets; `ubar`, `b`, and total variance distinguish within- and between-imputation uncertainty. IPW coefficients target the marginal mean in the pseudo-population induced by inverse observation probabilities. The dropout logistic coefficients describe association with continued observation, not the scientific outcome model.
+
+## 7. Diagnostics
+
+```{r}
+if (exists("imp")) {
+  plot(imp)                         # chain means/SDs by iteration
+  mice::densityplot(imp, ~d14)
+}
+
+summary(ipw_dat$sw[ipw_dat$R == 1])
+quantile(ipw_dat$sw[ipw_dat$R == 1], c(0, .01, .5, .99, 1))
+table(ipw_dat$R, ipw_dat$visit)
+```
+
+For MI, inspect convergence, observed/imputed distributions, transformations, bounds, interactions, and whether the imputation model is at least as rich as the analysis model. For IPW, inspect positivity, extreme weights, dropout-model calibration, and sensitivity to truncation.
+
+## 8. Caveats
+
+- MCAR/MAR/MNAR are statements about the joint full-data/observation process; observed data alone cannot distinguish MAR from MNAR.
+- Likelihood ignorability under MAR also requires distinct parameters and correct outcome modeling. MI requires congenial imputation/analysis models and inclusion of predictors of missingness and outcome.
+- LOCF treats an imputed value as known, distorts trajectories and covariance, and is generally unjustified except under a scientifically defensible constant-after-dropout estimand.
+- Standard `mice` wide imputation is appropriate for a modest common visit grid; irregular or multilevel data may require two-level methods (`2l.pan`, `2l.norm`) or joint modeling.
+- Ordinary GEE is not generally valid under MAR dropout. IPW requires a correct observation model and positivity; weighted GEE scale and covariance defaults differ across R/SAS implementations.
+- Selection and pattern-mixture models are not identified under MNAR without restrictions. Report sensitivity parameters (e.g., delta adjustment/tipping point), not a single unverifiable fit.
+- EM maximizes the observed-data likelihood under its joint model; it does not by itself add between-imputation uncertainty or make an MNAR mechanism ignorable.
+- **Source-backed:** taxonomy, likelihood ignorability, MI, IPW, selection/pattern-mixture models, and LOCF limitations follow the notes. **Standard-practice addition:** `mice`/`geepack` code is the native R implementation.
+
+## 9. Source references
+
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-018-1.pdf`, pp. 8--13, 21--36, 44--62, and 69--87 (mechanisms, likelihood, MI, weighting).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-019.pdf`, pp. 4--18 and 24--45 (missing-data examples, MI and weighting).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/missing_data_writeup.pdf`, pp. 1--8 (likelihood ignorability under MCAR/MAR/MNAR).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf`, pp. 1--22; `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.1 - Missing_Data_2.pdf`, pp. 1--19 (mechanisms and selection models).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.2 - Missing_Data_3.pdf`, pp. 1--12 (pattern-mixture models); `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.3 - Missing_Data_4.pdf`, pp. 1--25 (weighted GEE).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW4/PROGRAMS_HW4/02-HW4-Descriptive-Analysis.sas`, lines 26--44 (patterns and dropout prediction).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-004.pdf`, pp. 4--33 (missing longitudinal data and EM algorithm).

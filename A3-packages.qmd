@@ -1,0 +1,154 @@
+---
+title: "A3. R packages for longitudinal data analysis"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## 1. Aim
+
+This appendix maps common longitudinal-data tasks to idiomatic R packages. Package choice is driven by the estimand, response distribution, dependence model, and inferential target; no single package covers all combinations.
+
+## 2. Model specification
+
+The package groups cover conditional mixed models
+$$
+g\{E(Y_{ij}\mid b_i)\}=x_{ij}^{\mathsf T}\beta+z_{ij}^{\mathsf T}b_i,
+\qquad b_i\sim N(0,D),
+$$
+and marginal models
+$$
+g\{E(Y_{ij})\}=x_{ij}^{\mathsf T}\beta,
+\qquad \operatorname{Var}(Y_i)=A_i^{1/2}R_i(\alpha)A_i^{1/2}.
+$$
+
+## 3. R packages/functions
+
+### Data manipulation and visualization
+
+- **dplyr** — long-format grouping, summaries, joins, and creation of subject/time variables.
+- **tidyr** — wide-to-long reshaping with `pivot_longer()` and balanced-grid construction with `complete()`.
+- **ggplot2** — individual profiles, mean-profile plots, residual displays, and diagnostic graphics.
+- **naniar** — missingness summaries and pattern visualizations such as `vis_miss()` and `gg_miss_upset()`.
+
+### Gaussian repeated measures and linear mixed models
+
+- **nlme** — `gls()`/`lme()` models with explicit residual covariance structures, including CS, AR(1), continuous-time AR(1), spatial correlation, and unstructured correlation.
+- **lme4** — sparse, modular fitting of linear and generalized linear mixed models via `lmer()` and `glmer()`.
+- **lmerTest** — Satterthwaite or Kenward--Roger denominator-df tests for `lmer()` fixed effects.
+- **pbkrtest** — Kenward--Roger and parametric-bootstrap comparisons for nested Gaussian mixed models.
+
+### Marginal models and GEE
+
+- **geepack** — `geeglm()` GEE fitting, robust/model-based covariance extraction, common working correlations, and QIC via `QIC()`.
+- **gee** — alternative GEE implementation whose summary exposes naive and robust standard errors and scale estimation directly.
+
+### Generalized linear mixed models
+
+- **lme4** — Laplace or adaptive Gauss--Hermite fitting of standard-family GLMMs through `glmer(..., nAGQ=)`.
+- **glmmTMB** — flexible GLMMs with offsets, zero inflation, dispersion models, and families such as negative binomial and beta-binomial.
+
+### Missing data and weighting
+
+- **mice** — multiple imputation by chained equations, passive transformations, multilevel imputation methods, and Rubin pooling.
+- **mitools** — manipulation and pooling of multiply imputed analyses when model-specific `mice::pool()` support is unavailable.
+- **WeightIt** — construction and diagnostics of inverse-probability weights; longitudinal dropout weights usually require explicit visit-specific models.
+- **survey** — weighted estimating-equation analyses with design-aware sandwich variance estimation.
+
+### Contrasts, predictions, and inference
+
+- **emmeans** — estimated marginal means, estimable functions, interaction contrasts, trends, and multiplicity adjustments.
+- **marginaleffects** — response-scale predictions, contrasts, slopes, and marginal standardization across model classes.
+- **multcomp** — simultaneous general linear hypotheses and multiplicity-adjusted confidence intervals/tests.
+
+### Diagnostics and influence
+
+- **performance** — standardized checks for singularity, convergence, collinearity, residual behavior, and overdispersion.
+- **see** — plotting backend used by `performance::check_model()` diagnostic panels.
+- **DHARMa** — simulation-based residual diagnostics for GLMMs, including dispersion and zero-inflation tests.
+- **influence.ME** — cluster-deletion influence measures and Cook's distances for `lme4` mixed models.
+- **clubSandwich** — cluster-robust covariance estimators and small-sample corrections for supported fitted-model classes.
+
+### Tidying and reproducible output
+
+- **broom** — tidy coefficient, fitted-value, and residual output for GLMs and many marginal models.
+- **broom.mixed** — tidy fixed effects, random effects, variance components, and confidence intervals from mixed models.
+- **modelsummary** — compact, reproducible comparison tables across supported model classes.
+
+## 4. Data
+
+`nlme::Orthodont` contains repeated orthodontic distance measurements in long format: one row per subject-age occasion, with subject (`Subject`), time (`age`), sex, and continuous response (`distance`).
+
+```{r}
+data("Orthodont", package = "nlme")
+str(nlme::Orthodont)
+```
+
+## 5. Fit
+
+The following audit is intentionally non-failing: it identifies which manual dependencies are available before rendering the analysis chapters.
+
+```{r}
+manual_packages <- c(
+  "dplyr", "tidyr", "ggplot2", "naniar",
+  "nlme", "lme4", "lmerTest", "pbkrtest",
+  "geepack", "gee", "glmmTMB", "mice", "mitools", "WeightIt", "survey",
+  "emmeans", "marginaleffects", "multcomp",
+  "performance", "see", "DHARMa", "influence.ME", "clubSandwich",
+  "broom", "broom.mixed", "modelsummary"
+)
+
+package_audit <- data.frame(
+  package = manual_packages,
+  installed = vapply(manual_packages, requireNamespace, logical(1), quietly = TRUE)
+)
+package_audit
+
+# Install once if needed:
+# install.packages(package_audit$package[!package_audit$installed])
+```
+
+## 6. Extract & interpret
+
+```{r}
+transform(
+  subset(package_audit, installed),
+  version = vapply(package, function(p) as.character(utils::packageVersion(p)), character(1))
+)
+```
+
+Package versions are part of the computational specification because supported covariance structures, inferential defaults, and tidiers can change between releases.
+
+## 7. Diagnostics
+
+```{r}
+stopifnot(
+  getRversion() >= "4.2.0",
+  requireNamespace("nlme", quietly = TRUE)
+)
+```
+
+Before an exam or reproducible render, run the package audit and record `sessionInfo()`; diagnose discrepancies against the fitted model's package version rather than assuming cross-package defaults agree.
+
+## 8. Caveats
+
+- `lme4::lmer()` deliberately omits denominator-df p-values; use `lmerTest` or `pbkrtest` when finite-sample fixed-effect tests are required.
+- `nlme` residual covariance structures and `lme4` random-effects structures are not interchangeable parameterizations of every marginal covariance model.
+- GEE packages differ in scale estimation, finite-sample corrections, and the labels used for robust versus model-based covariance estimates.
+- SAS `PROC MIXED`/`PROC GLIMMIX` defaults are procedure- and option-dependent; reproduce the intended likelihood, denominator-df method, covariance parameterization, and quadrature explicitly in R.
+- **Standard-practice addition:** packages not used in the course code are included only when they supply a current, idiomatic R implementation of a method covered in the notes.
+
+## 9. Source references
+
+- `/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 42--90 (mixed models, GEE/GLMM, interpretation, diagnostics).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-010.pdf`, pp. 5--73 (`PROC MIXED` functionality mapped to `nlme`/`lme4`).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf`, pp. 39--80 (GEE); `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-015.pdf`, pp. 5--61 (GLMM).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.0 - LMM_1.pdf` through `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.4 - LMM_Review.pdf` (LMM).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.1 - GEE_1.pdf` through `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.6 - GEE_6-Review.pdf` (GEE).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.0 - GLMM_1.pdf` through `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.4 - GLMM - Review.pdf` (GLMM).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf` through `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.4 - Missing_data - Recap.pdf` (missing data).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/` and `/Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/` — R package use in the audited `.R`/`.Rmd` files; SAS inference and covariance options are reproduced with native R in the topic chapters.

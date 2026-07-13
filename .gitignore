@@ -1,0 +1,41 @@
+/.quarto/
+
+
+# OS/system files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# Cache and temp data
+.cache/
+.Rcheck/
+*.utf8.md
+*.knit.md
+*.log
+*.aux
+*.bcf
+*.xml
+*.out
+*.synctex.gz
+
+# Secrets
+.env
+credentials.json
+
+# python compiled files
+*.py[cod]
+.ipynb_checkpoints/
+__pycache__/
+.venv/
+*.egg-info/
+
+# R session files
+.Rhistory
+.Rapp.history
+
+# RStudio files
+.Rproj.user/
+*.Rproj

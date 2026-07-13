@@ -1,0 +1,135 @@
+---
+title: "5. GLM review for longitudinal outcomes"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(ggplot2)
+```
+
+## 1. Aim
+
+GLMs specify the marginal mean--variance relationship for non-Gaussian responses and provide the mean-model component subsequently embedded in GEE or GLMM. A pooled GLM is a useful benchmark, but its model-based covariance is invalid for repeated observations unless independence is justified or a cluster-robust correction is used.
+
+## 2. Model specification
+
+For an exponential-family response,
+$$
+f(y;\theta,\phi)=\exp\left\{\frac{y\theta-b(\theta)}{a(\phi)}+c(y,\phi)\right\},
+\quad E(Y)=b'(\theta),\quad \operatorname{Var}(Y)=a(\phi)b''(\theta),
+$$
+and a GLM sets $g(\mu_{ij})=x_{ij}^{\mathsf T}\beta+\log(e_{ij})$, where $e_{ij}$ is exposure for a log-link rate model. Common longitudinal outcomes use binomial-logit, Poisson-log, negative-binomial-log, or Gaussian-identity specifications.
+
+## 3. R packages/functions
+
+`stats::glm()` fits standard GLMs; `MASS::glm.nb()` handles negative-binomial counts; `anova(..., test = "LRT")` compares nested likelihood models; `broom::tidy()` extracts estimates, exponentiated effects, and confidence intervals.
+
+## 4. Data
+
+`MASS::epil` has repeated two-week seizure counts (`y`) for each `subject`, treatment, baseline seizure rate, age, and follow-up `period`.
+
+```{r}
+data("epil", package = "MASS")
+epil <- MASS::epil |>
+  mutate(subject = factor(subject), period_c = period - 1, exposure = 2)
+dplyr::glimpse(epil)
+```
+
+## 5. Fit
+
+```{r}
+pois_main <- glm(
+  y ~ trt + period_c + lbase + lage + offset(log(exposure)),
+  family = poisson(link = "log"), data = epil
+)
+pois_interaction <- update(pois_main, . ~ . + trt:period_c)
+
+summary(pois_interaction)
+anova(pois_main, pois_interaction, test = "LRT")
+AIC(pois_main, pois_interaction)
+
+dispersion_ratio <- sum(residuals(pois_interaction, type = "pearson")^2) /
+  df.residual(pois_interaction)
+dispersion_ratio
+
+quasi_fit <- update(pois_interaction, family = quasipoisson(link = "log"))
+nb_fit <- MASS::glm.nb(
+  y ~ trt * period_c + lbase + lage + offset(log(exposure)), data = epil
+)
+summary(quasi_fit)
+summary(nb_fit)
+```
+
+### Ordinal response extension
+
+```{r}
+epil_ordinal <- epil |>
+  mutate(severity = ordered(cut(y, breaks = c(-Inf, 0, 4, Inf),
+                                labels = c("none", "moderate", "high"))))
+
+if (requireNamespace("ordinal", quietly = TRUE)) {
+  ordinal_glmm <- ordinal::clmm(
+    severity ~ trt + period_c + lbase + (1 | subject),
+    data = epil_ordinal, link = "logit", Hess = TRUE
+  )
+  summary(ordinal_glmm)
+}
+```
+
+## 6. Extract & interpret
+
+```{r}
+broom::tidy(pois_interaction, conf.int = TRUE, exponentiate = TRUE)
+broom::tidy(nb_fit, conf.int = TRUE, exponentiate = TRUE)
+
+if (requireNamespace("emmeans", quietly = TRUE)) {
+  emmeans::emtrends(nb_fit, ~trt, var = "period_c", type = "response")
+}
+```
+
+Exponentiated log-link coefficients are conditional rate ratios under the fitted mean model; the offset converts expected counts to rates per exposure unit. An interaction coefficient is a ratio of rate ratios, so constituent main effects are evaluated at `period_c = 0`. The quasi-Poisson fit rescales covariance without defining a full likelihood; the negative-binomial model changes the variance function and supports likelihood-based AIC/LRT.
+
+## 7. Diagnostics
+
+```{r}
+glm_diag <- data.frame(
+  fitted = fitted(pois_interaction),
+  pearson = residuals(pois_interaction, type = "pearson"),
+  deviance = residuals(pois_interaction, type = "deviance"),
+  cook = cooks.distance(pois_interaction),
+  subject = epil$subject
+)
+
+ggplot(glm_diag, aes(fitted, pearson)) + geom_point() + geom_hline(yintercept = 0, lty = 2)
+head(glm_diag[order(glm_diag$cook, decreasing = TRUE), ], 8)
+
+c(
+  Pearson_dispersion = sum(glm_diag$pearson^2) / df.residual(pois_interaction),
+  deviance_dispersion = deviance(pois_interaction) / df.residual(pois_interaction)
+)
+```
+
+Assess link/mean misspecification, residual dispersion, influential observations/clusters, separation for binary models, and whether an exposure offset is correctly measured.
+
+## 8. Caveats
+
+- These fits ignore repeated-subject correlation; use GEE for population-average inference or GLMM for a conditional random-effects model.
+- Pearson/deviance dispersion ratios are screens, not formal universal tests, and repeated dependence itself inflates them.
+- Quasi-likelihood models have no ordinary likelihood; do not compare their AIC with likelihood fits.
+- Exponentiation is link-specific: odds ratios for logit, rate ratios for log, and no ratio interpretation for identity.
+- Wald inference may be unreliable with sparse outcomes, boundary estimates, or separation; use likelihood or penalized methods as appropriate.
+- Proportional-odds coefficients assume common covariate effects across cumulative logits; assess this constraint before reporting a single ordinal odds ratio. Nominal multinomial models require a separate set of logits and a dependence strategy.
+- **Source-backed:** family/link, likelihood, offsets, Wald/LRT, interactions, and overdispersion are in the notes. **Standard-practice addition:** `MASS::glm.nb()` is the idiomatic R extension for overdispersed counts.
+
+## 9. Source references
+
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-013.pdf`, pp. 4--21, 26--37, and 60--68 (GLM families, links, inference, fit assessment).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.0 - GLM_Review.pdf`, pp. 1--15 and 19--24 (exponential family, IRLS/inference, overdispersion).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/supplements/GEE_notes.pdf`, pp. 1--5 (quasi-likelihood and overdispersion).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Kaicheng/Assignment3/GLM-fitting and inference.r`, lines 1--169 (R mean model, robust/model-based extraction, joint Wald tests).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-017.pdf`, pp. 2--26 (ordinal, multinomial, and mixed response types).

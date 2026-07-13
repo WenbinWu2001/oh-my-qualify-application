@@ -1,0 +1,152 @@
+---
+title: "6. Generalized linear mixed models"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(ggplot2)
+library(lme4)
+```
+
+## 1. Aim
+
+GLMMs estimate subject-specific effects for non-Gaussian repeated outcomes by conditioning on latent random effects. Likelihood inference integrates over the random-effects distribution; Laplace and adaptive Gauss--Hermite quadrature trade computation against approximation accuracy.
+
+## 2. Model specification
+
+$$
+g\{E(Y_{ij}\mid b_i)\}=x_{ij}^{\mathsf T}\beta+z_{ij}^{\mathsf T}b_i+log(e_{ij}),
+\qquad b_i\sim N(0,D),
+$$
+with conditional independence of $Y_{ij}$ given $b_i$. The marginal likelihood contribution is
+$$
+L_i(\beta,D)=\int\left\{\prod_j f(y_{ij}\mid b_i;\beta)\right\}\phi(b_i;0,D)\,db_i.
+$$
+
+## 3. R packages/functions
+
+`lme4::glmer()` fits standard-family GLMMs using Laplace (`nAGQ = 1`) or adaptive Gauss--Hermite quadrature (`nAGQ > 1`, scalar random effect). `glmmTMB::glmmTMB()` supports negative-binomial, zero-inflated, hurdle, beta-binomial, offset, and dispersion submodels. `DHARMa` supplies simulation-based diagnostics.
+
+## 4. Data
+
+`MASS::epil` contains four repeated seizure counts per subject; `exposure = 2` denotes the two-week count interval.
+
+```{r}
+data("epil", package = "MASS")
+epil <- MASS::epil |>
+  mutate(subject = factor(subject), period_c = period - 1, exposure = 2)
+```
+
+## 5. Fit
+
+```{r}
+form <- y ~ trt * period_c + lbase + lage + offset(log(exposure)) + (1 | subject)
+
+pois_laplace <- glmer(
+  form, data = epil, family = poisson(link = "log"), nAGQ = 1,
+  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+)
+pois_agq <- update(pois_laplace, nAGQ = 7)
+
+summary(pois_laplace)
+cbind(Laplace = fixef(pois_laplace), AGQ7 = fixef(pois_agq))
+AIC(pois_laplace, pois_agq)
+```
+
+```{r}
+if (requireNamespace("glmmTMB", quietly = TRUE)) {
+  nb_glmm <- glmmTMB::glmmTMB(
+    y ~ trt * period_c + lbase + lage + offset(log(exposure)) + (1 | subject),
+    data = epil,
+    family = glmmTMB::nbinom2(link = "log")
+  )
+  summary(nb_glmm)
+  AIC(pois_laplace, nb_glmm)
+}
+```
+
+### Transition model
+
+```{r}
+epil_transition <- epil |>
+  group_by(subject) |>
+  arrange(period, .by_group = TRUE) |>
+  mutate(lag_y = lag(y)) |>
+  ungroup() |>
+  filter(!is.na(lag_y))
+
+transition_fit <- glm(
+  y ~ trt + period_c + log1p(lag_y) + lbase + lage,
+  family = quasipoisson(link = "log"), data = epil_transition
+)
+summary(transition_fit)
+```
+
+## 6. Extract & interpret
+
+```{r}
+exp(cbind(estimate = fixef(pois_agq), confint(pois_agq, parm = "beta_", method = "Wald")))
+as.data.frame(VarCorr(pois_agq))
+head(ranef(pois_agq)$subject)
+
+conditional_rate <- predict(pois_agq, type = "response", re.form = NULL)
+fixed_re_zero_rate <- predict(pois_agq, type = "response", re.form = NA)
+head(cbind(conditional_rate, fixed_re_zero_rate))
+```
+
+Fixed-effect exponentials are subject-specific conditional rate ratios at equal random effects. The random-intercept variance is heterogeneity on the log-rate scale; `ranef()` returns empirical-Bayes conditional modes. `re.form = NULL` predicts for fitted subjects conditional on their random effects; `re.form = NA` sets random effects to zero and is not, for a nonlinear link, the marginal population mean.
+
+Under a logistic random-intercept model,
+$$
+\beta_{PA}\approx\beta_{SS}/\sqrt{1+0.35\sigma_b^2},
+$$
+so the corresponding GEE coefficient is typically attenuated. Under a log link with normal random intercept, marginalization adds $\sigma_b^2/2$ to the intercept when random-effect variance is covariate-invariant; slopes then retain the same multiplicative interpretation.
+
+## 7. Diagnostics
+
+```{r}
+lme4::isSingular(pois_laplace)
+pois_laplace@optinfo$conv$lme4$messages
+
+pearson <- residuals(pois_laplace, type = "pearson")
+overdispersion <- sum(pearson^2) / (nobs(pois_laplace) - length(fixef(pois_laplace)))
+overdispersion
+
+ggplot(data.frame(fitted = fitted(pois_laplace), pearson), aes(fitted, pearson)) +
+  geom_point() + geom_hline(yintercept = 0, linetype = 2)
+
+if (requireNamespace("DHARMa", quietly = TRUE)) {
+  sim_res <- DHARMa::simulateResiduals(pois_laplace, n = 250, plot = FALSE)
+  plot(sim_res)
+  DHARMa::testDispersion(sim_res)
+  DHARMa::testZeroInflation(sim_res)
+}
+```
+
+Compare Laplace and higher-order quadrature when cluster sizes are small or random-effect variance is large; inspect gradients/Hessian, singularity, simulated residual uniformity, dispersion, zero inflation, and subject-level influence.
+
+## 8. Caveats
+
+- GEE is population-averaged; GLMM is subject-specific. Do not compare coefficient magnitudes without marginalization and link-specific attenuation.
+- `glmer()` uses Laplace at `nAGQ = 1`; `nAGQ = 0` is a faster, less accurate approximation. Adaptive quadrature with `nAGQ > 1` is restricted to a single scalar random-effect term.
+- SAS `PROC GLIMMIX` may default to pseudo-likelihood or different quadrature depending on options; match the estimation method explicitly before comparing results.
+- Overdispersion can reflect omitted random effects, serial dependence, zero inflation, or a wrong mean/variance family; a negative-binomial fit is not an automatic cure.
+- LRTs for random-effect variances have boundary nulls; plain chi-square p-values can be anticonservative.
+- Conditional modes are shrunken predictions and their empirical distribution is not a direct normality test of the latent population.
+- A transition-model coefficient conditions on observed response history and is neither a GEE marginal effect nor a random-effects subject-specific effect; initial-condition and missing-history handling must be stated.
+- **Source-backed:** conditional interpretation, marginal likelihood, quadrature/approximations, and empirical Bayes follow the notes. **Standard-practice addition:** `glmmTMB` and `DHARMa` supply current idiomatic R implementations.
+
+## 9. Source references
+
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-015.pdf`, pp. 5--24, 31--39, and 50--61 (GLMM specification, estimation, interpretation).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.0 - GLMM_1.pdf`, pp. 1--16 and 22--30 (subject-specific models).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf`, pp. 5--13 (GEE/GLMM marginalization and attenuation).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.2 - GLMM_3.pdf`, pp. 1--21; `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.3 - GLMM_4.pdf`, pp. 1--7 (quadrature, Laplace, PQL, empirical Bayes).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Wenbin/Assignment7/BIOS767-HW7.Rmd`, code chunks `fit_models` and `random_effects_predictions` (R GLMM comparison and predictions).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/HW5/STAT571-HW5-Code.Rmd`, GLMM/GEE comparison chunks (conditional versus marginal fits).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-020.pdf`, pp. 2--32 (transition models and lagged responses).

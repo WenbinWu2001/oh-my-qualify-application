@@ -1,0 +1,125 @@
+---
+title: "A2. Interpretation cheatsheet"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(lme4)
+```
+
+## 1. Aim
+
+This appendix maps common output quantities to their estimands and valid one-sentence interpretations. Interpretations are conditional on coding, link, time origin, interaction structure, covariance estimator, and missing-data assumptions.
+
+## 2. Model specification
+
+$$
+\text{GEE: }g\{E(Y_{ij})\}=x_{ij}^{\mathsf T}\beta_{PA},
+\qquad
+\text{GLMM: }g\{E(Y_{ij}\mid b_i)\}=x_{ij}^{\mathsf T}\beta_{SS}+z_{ij}^{\mathsf T}b_i.
+$$
+For Gaussian LMMs, identity-link marginalization leaves $\beta$ unchanged. For logistic random-intercept models, $\beta_{PA}\approx\beta_{SS}/\sqrt{1+0.35\sigma_b^2}$.
+
+## 3. R packages/functions
+
+Use `summary()` for the complete fitted object; `broom.mixed::tidy()` for fixed/random parameters; `emmeans` for estimable means/trends/interaction contrasts; `marginaleffects` for response-scale standardization; `VarCorr()`/`ranef()` for variance components and BLUPs.
+
+## 4. Data
+
+`MASS::epil` is converted to a binary repeated outcome for a direct population-average versus subject-specific comparison.
+
+```{r}
+data("epil", package = "MASS")
+epil <- MASS::epil |>
+  mutate(subject = factor(subject), period_c = period - 1, any_seizure = as.integer(y > 0)) |>
+  arrange(subject, period)
+```
+
+## 5. Fit
+
+```{r}
+if (requireNamespace("geepack", quietly = TRUE)) {
+  gee_bin <- geepack::geeglm(
+    any_seizure ~ trt * period_c + lbase + lage,
+    id = subject, waves = period, data = epil,
+    family = binomial, corstr = "exchangeable"
+  )
+}
+
+glmm_bin <- glmer(
+  any_seizure ~ trt * period_c + lbase + lage + (1 | subject),
+  epil, family = binomial, nAGQ = 7
+)
+```
+
+## 6. Extract & interpret
+
+```{r}
+if (exists("gee_bin")) {
+  cbind(estimate = coef(gee_bin), robust_se = sqrt(diag(gee_bin$geese$vbeta)))
+}
+exp(fixef(glmm_bin))
+as.data.frame(VarCorr(glmm_bin))
+
+if (requireNamespace("emmeans", quietly = TRUE)) {
+  ss_trends <- emmeans::emtrends(glmm_bin, ~trt, var = "period_c", type = "response")
+  ss_trends
+  pairs(ss_trends, adjust = "holm")
+}
+
+if (requireNamespace("marginaleffects", quietly = TRUE)) {
+  marginaleffects::avg_comparisons(glmm_bin, variables = "trt", type = "response")
+}
+```
+
+| Quantity | Concise interpretation |
+|---|---|
+| LMM fixed intercept | Expected response for the reference covariate pattern at the time origin; recenter time if this is extrapolative. |
+| LMM fixed slope | Expected response change per time unit for the reference group; with an interaction it is not the common slope. |
+| Group x time | Difference in time slopes (continuous time) or difference of occasion contrasts (factor time). |
+| Random-intercept variance | Residual between-subject heterogeneity in the conditional intercept. |
+| Random-slope variance | Residual between-subject heterogeneity in conditional change; marginal variance/correlation then depends on time. |
+| Random-effect correlation | Association between latent deviations; inspect time centering because it changes the intercept and its correlation with slope. |
+| BLUP/conditional mode | Shrunken subject deviation conditional on the fitted population model and variance parameters. |
+| Random-intercept ICC | $\tau_0^2/(\tau_0^2+\sigma^2)$ for the Gaussian random-intercept model only. |
+| GEE coefficient | Population-average change in the link of the marginal mean. |
+| GEE working $\alpha$ | Nuisance association parameter used for efficiency; not generally a target unless association is explicitly modeled. |
+| GEE robust SE | Sandwich uncertainty, asymptotically robust to working-correlation misspecification. |
+| GEE model-based SE | Valid only if the working covariance is correctly specified. |
+| GEE scale $\phi$ | Marginal variance multiplier under the package's scale-estimation rule. |
+| Logistic GLMM $e^{\beta}$ | Subject-specific conditional odds ratio at equal random effects. |
+| Logistic GEE $e^{\beta}$ | Population-average marginal odds ratio. |
+| Poisson/log GLMM $e^{\beta}$ | Conditional rate ratio; an offset fixes the exposure denominator. |
+| Satterthwaite/KR df | Approximate denominator df for a specified fixed-effect test; KR also adjusts covariance/test statistic. |
+
+## 7. Diagnostics
+
+Before interpreting, verify reference levels, time units/origin, contrast matrix, link/response scale, robust versus model-based covariance, convergence/singularity, dispersion, missing-data assumption, and whether predictions are conditional (`re.form = NULL`), random-effects-zero (`re.form = NA`), or marginalized/standardized.
+
+```{r}
+contrasts(epil$trt)
+isSingular(glmm_bin)
+glmm_bin@optinfo$conv$lme4$messages
+```
+
+## 8. Caveats
+
+- A main effect involved in an interaction is evaluated at the reference/zero value of the interacting variable.
+- `re.form = NA` in a nonlinear mixed model sets $b=0$; it does not integrate over $b$. Use marginal standardization or numerical integration for population-average predictions.
+- Odds ratios are noncollapsible; PA/SS differences can occur without confounding and are not explained solely by bias.
+- `emmeans` averages over the reference grid according to its weighting rule; state whether weights are equal, proportional, or standardized to a target population.
+- Report effect, scale, unit, contrast, uncertainty method, and multiplicity adjustment in the same sentence.
+- **Source-backed:** interpretation distinctions and attenuation follow BIOS 767/STAT 571. **Standard-practice addition:** `marginaleffects` gives explicit response-scale standardization.
+
+## 9. Source references
+
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/3.0 - Model Families.pdf`, pp. 2--5 (conditional and marginal model families).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf`, pp. 5--13 and 15--22 (PA/SS relationship and interpretation).
+- `/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 80--85 (generalized mixed-model coefficient interpretation and attenuation).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-010.pdf`, pp. 40--58 and 62--71 (fixed effects, random effects, BLUPs, ICC).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf`, pp. 39--52 and 62--68 (marginal GEE interpretation and covariance estimators).

@@ -1,0 +1,151 @@
+---
+title: "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(tidyr)
+```
+
+## 1. Aim
+
+Repeated-measures ANOVA tests between-subject, within-subject time, and group-by-time effects under a structured univariate error model. The multivariate approach instead treats each occasion as a response component and tests profile parallelism, coincidence, and flatness without sphericity, but requires complete, commonly scheduled response vectors.
+
+## 2. Model specification
+
+For group $g$, subject $i$, and occasion $j$,
+$$
+Y_{gij}=\mu+\alpha_g+\tau_j+(\alpha\tau)_{gj}+u_{gi}+e_{gij}.
+$$
+The univariate F test for within-subject effects requires $C\Sigma C^{\mathsf T}=\sigma^2 I$ for an orthonormal within-subject contrast matrix $C$. Profile hypotheses are
+$$
+H_{\mathrm{parallel}}:C\mu_1=\cdots=C\mu_G,\quad
+H_{\mathrm{coincident}}:\mu_1=\cdots=\mu_G,\quad
+H_{\mathrm{flat}}:C\bar\mu=0.
+$$
+
+## 3. R packages/functions
+
+Base `aov()` gives the classical split-plot ANOVA decomposition. `car::Anova()` applied to an `mlm` supplies multivariate tests and Greenhouse--Geisser/Huynh--Feldt corrected univariate tests. `emmeans` supplies estimable profile contrasts and multiplicity adjustments.
+
+## 4. Data
+
+`nlme::Orthodont` is balanced at ages 8, 10, 12, and 14; the subject is `Subject`, the between-subject factor is `Sex`, and `distance` is continuous.
+
+```{r}
+data("Orthodont", package = "nlme")
+orth <- as.data.frame(Orthodont) |>
+  mutate(Subject = factor(Subject), age_f = factor(age))
+with(orth, table(Sex, age_f))
+```
+
+## 5. Fit
+
+### Univariate repeated-measures ANOVA
+
+```{r}
+rm_aov <- aov(distance ~ Sex * age_f + Error(Subject / age_f), data = orth)
+summary(rm_aov)
+```
+
+### Multivariate repeated-measures model
+
+```{r}
+orth_wide <- orth |>
+  select(Subject, Sex, age_f, distance) |>
+  pivot_wider(names_from = age_f, values_from = distance) |>
+  arrange(Subject)
+
+Y <- as.matrix(orth_wide[c("8", "10", "12", "14")])
+mlm_fit <- lm(Y ~ Sex, data = orth_wide)
+
+idata <- data.frame(age_f = factor(c(8, 10, 12, 14)))
+if (requireNamespace("car", quietly = TRUE)) {
+  rm_tests <- car::Anova(mlm_fit, idata = idata, idesign = ~age_f, type = 3)
+  summary(rm_tests, multivariate = TRUE)   # Pillai, Wilks, Hotelling-Lawley, Roy
+  summary(rm_tests, multivariate = FALSE)  # sphericity tests and GG/HF corrections
+}
+```
+
+### Profile contrasts through a correlated Gaussian model
+
+```{r}
+profile_gls <- nlme::gls(
+  distance ~ Sex * age_f,
+  data = orth,
+  correlation = nlme::corSymm(form = ~ 1 | Subject),
+  weights = nlme::varIdent(form = ~ 1 | age_f),
+  method = "REML"
+)
+
+if (requireNamespace("emmeans", quietly = TRUE)) {
+  emm <- emmeans::emmeans(profile_gls, ~ Sex * age_f)
+  emmeans::joint_tests(emm)                       # omnibus estimable functions
+  emmeans::contrast(emm, "consec", by = "Sex")  # adjacent-time changes within sex
+  emmeans::contrast(
+    emmeans::contrast(emm, "consec", by = "Sex"),
+    "revpairwise",
+    by = NULL,
+    adjust = "holm"
+  )                                               # differences of changes
+}
+```
+
+### Repeated-measures sample size from a planned contrast
+
+For two equally allocated groups and planned contrast $c$, a normal-approximation calculation uses $\operatorname{Var}(c^{\mathsf T}\bar Y_1-c^{\mathsf T}\bar Y_0)=4c^{\mathsf T}\Sigma c/N$, where $N$ is total sample size.
+
+```{r}
+Sigma_plan <- stats::cov(Y)
+c_change <- c(-1, 0, 0, 1)            # age-14 minus age-8 change
+delta <- 2                              # target difference in mean changes
+alpha <- 0.05
+power <- 0.80
+N_total <- ceiling(
+  4 * drop(t(c_change) %*% Sigma_plan %*% c_change) *
+    (qnorm(1 - alpha / 2) + qnorm(power))^2 / delta^2
+)
+N_total + (N_total %% 2)                # enforce equal allocation
+```
+
+## 6. Extract & interpret
+
+The `Sex:age_f` test is the parallelism test; if rejected, report time-specific or change-specific contrasts rather than an average sex effect. Conditional on parallelism, the `Sex` test addresses coincidence and the `age_f` test addresses flatness. Greenhouse--Geisser and Huynh--Feldt results alter numerator/denominator degrees of freedom, whereas multivariate Pillai/Wilks tests do not impose sphericity.
+
+## 7. Diagnostics
+
+```{r}
+stopifnot(!anyNA(Y), length(unique(orth$age_f)) == ncol(Y))
+
+par(mfrow = c(1, 2))
+plot(fitted(profile_gls), resid(profile_gls, type = "normalized"),
+     xlab = "Fitted", ylab = "Normalized residual")
+abline(h = 0, lty = 2)
+qqnorm(resid(profile_gls, type = "normalized")); qqline(resid(profile_gls, type = "normalized"))
+par(mfrow = c(1, 1))
+```
+
+For classical MANOVA, verify complete response vectors, common occasions, independent subjects, and adequate subjects relative to the number of occasions and groups.
+
+## 8. Caveats
+
+- Base `aov()` uses sequential sums of squares; term order matters in unbalanced designs. `car::Anova(type = 3)` requires deliberate contrasts and estimability checks.
+- A nonsignificant interaction does not mechanically require refitting before Type III main-effect tests; interpretations remain conditional on the chosen contrast coding.
+- MANOVA avoids sphericity but is complete-case and becomes unstable as the response dimension approaches the number of independent subjects.
+- `emmeans` contrasts from `gls` use the fitted covariance model and are the idiomatic R analogue of SAS `ESTIMATE`/`CONTRAST` statements.
+- **Source-backed:** RM-ANOVA/MANOVA hypotheses and profile sequence are from BIOS 767. **Standard-practice addition:** the `car` and `emmeans` implementations replace SAS GLM/MIXED syntax.
+
+## 9. Source references
+
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-005.pdf`, pp. 7--14 and 24--39 (univariate RM-ANOVA and sphericity).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-006.pdf`, pp. 4--23 (MANOVA and profile tests).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/anova-refitting.pdf`, pp. 1--5 (Type I versus Type III tests and refitting).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/03-HW3-Profile-Analysis.sas`, lines 21--160 (profile analysis and unstructured covariance).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/04-HW3-Trajectory-Analysis-Time.sas`, lines 178--227 (parallelism contrasts and ML comparisons).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/8.0 - Multivariate_Analysis_1_Testing.pdf`, pp. 9--16 and 22--30 (multivariate test statistics).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-022.pdf`, pp. 4--23 (sample size/power for a continuous longitudinal contrast).

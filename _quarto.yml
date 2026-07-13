@@ -1,0 +1,42 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - "*.qmd"
+
+website:
+  title: "Longitudinal Data Analysis in R"
+  search: true
+  sidebar:
+    style: docked
+    collapse-level: 1
+    contents:
+      - text: "Topic catalogue"
+        href: index.qmd
+      - section: "Core chapters"
+        contents:
+          - 01-eda-descriptive.qmd
+          - 02-rm-anova-manova.qmd
+          - 03-linear-mixed-models.qmd
+          - 04-marginal-models-gee.qmd
+          - 05-glm-review.qmd
+          - 06-glmm.qmd
+          - 07-missing-data.qmd
+          - 08-multivariate-testing-pca.qmd
+      - section: "Reference"
+        contents:
+          - A1-inference-diagnostics.qmd
+          - A2-interpretation-cheatsheet.qmd
+          - A3-packages.qmd
+
+format:
+  html:
+    toc: true
+    number-sections: false
+    code-fold: false
+    df-print: paged
+
+execute:
+  freeze: false
+  warning: false
+  message: false

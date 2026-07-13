@@ -1,0 +1,167 @@
+---
+title: "4. Marginal models and generalized estimating equations"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(ggplot2)
+```
+
+## 1. Aim
+
+GEE estimates a population-averaged regression parameter $\beta$ from a correctly specified marginal mean while treating within-cluster association as nuisance. The sandwich covariance gives asymptotically valid inference under working-correlation misspecification when independent clusters are sufficiently numerous and the observation process satisfies the estimating-equation assumptions.
+
+## 2. Model specification
+
+Let
+$$
+g(\mu_{ij})=x_{ij}^{\mathsf T}\beta,
+\qquad \operatorname{Var}(Y_i)=V_i=\phi A_i^{1/2}R_i(\alpha)A_i^{1/2}.
+$$
+GEE solves
+$$
+U(\beta)=\sum_{i=1}^m D_i^{\mathsf T}V_i^{-1}(Y_i-\mu_i)=0,
+\qquad D_i=\frac{\partial\mu_i}{\partial\beta^{\mathsf T}}.
+$$
+The model-based covariance is $B^{-1}$; the sandwich covariance is $B^{-1}MB^{-1}$, with $B=\sum D_i^{\mathsf T}V_i^{-1}D_i$ and $M=\sum D_i^{\mathsf T}V_i^{-1}r_ir_i^{\mathsf T}V_i^{-1}D_i$.
+
+## 3. R packages/functions
+
+`geepack::geeglm()` fits GEE with independence, exchangeable, AR(1), and unstructured working correlations; `geepack::QIC()` compares mean/correlation specifications; the internal `geese` object exposes robust and naive covariance and the estimated scale. `gee::gee()` is a useful alternative when SAS-like naive/robust output is desired.
+
+## 4. Data
+
+`geepack::dietox` records pig weight longitudinally by pig (`Pig`), week (`Time`), and feed treatment (`Evit`, `Cu`, `Cu035`).
+
+```{r}
+data("dietox", package = "geepack")
+dietox <- geepack::dietox |>
+  mutate(Pig = factor(Pig), Cu = relevel(factor(Cu), ref = "Cu000")) |>
+  arrange(Pig, Time)
+dplyr::glimpse(dietox)
+```
+
+## 5. Fit
+
+```{r}
+gee_formula <- Weight ~ Time * Cu
+
+gee_ind <- geepack::geeglm(
+  gee_formula, id = Pig, waves = Time, data = dietox,
+  family = gaussian, corstr = "independence", std.err = "san.se"
+)
+gee_exch <- update(gee_ind, corstr = "exchangeable")
+gee_ar1 <- update(gee_ind, corstr = "ar1")
+gee_un <- update(gee_ind, corstr = "unstructured")
+
+qic_table <- do.call(rbind, lapply(
+  list(independence = gee_ind, exchangeable = gee_exch, AR1 = gee_ar1, unstructured = gee_un),
+  function(z) geepack::QIC(z)
+))
+qic_table
+
+summary(gee_ar1)
+```
+
+### Time-varying covariate decomposition
+
+Separating a covariate into subject mean and within-subject deviation avoids conflating between- and within-subject associations. Here lagged weight is used only to demonstrate the parameterization; because it is an endogenous response history, causal interpretation requires transition-model assumptions.
+
+```{r}
+dietox_tv <- dietox |>
+  group_by(Pig) |>
+  mutate(lag_weight = lag(Weight), mean_lag_weight = mean(lag_weight, na.rm = TRUE),
+         dev_lag_weight = lag_weight - mean_lag_weight) |>
+  ungroup() |>
+  filter(!is.na(lag_weight))
+
+gee_within_between <- geepack::geeglm(
+  Weight ~ Time + Cu + mean_lag_weight + dev_lag_weight,
+  id = Pig, waves = Time, data = dietox_tv,
+  family = gaussian, corstr = "exchangeable"
+)
+summary(gee_within_between)
+```
+
+QIC may compare working correlations with a common mean model; compare mean models under a common working correlation. A smaller QIC is preferred, but the criterion does not validate the marginal mean.
+
+## 6. Extract & interpret
+
+```{r}
+gee_covariance_table(gee_ar1)
+
+c(
+  working_alpha = unname(gee_ar1$geese$alpha),
+  scale_phi = unname(gee_ar1$geese$gamma)
+)
+
+if (requireNamespace("broom", quietly = TRUE)) {
+  broom::tidy(gee_ar1, conf.int = TRUE)
+}
+
+if (requireNamespace("emmeans", quietly = TRUE)) {
+  emm_time <- emmeans::emtrends(gee_ar1, ~Cu, var = "Time", vcov. = gee_ar1$geese$vbeta)
+  emm_time
+  pairs(emm_time, adjust = "holm")
+}
+```
+
+`Time` is the population-average weekly mean change in the reference feed group; `Time:Cu` terms are population-average differences in slopes. `alpha` parameterizes the chosen working correlation and is not ordinarily a scientific estimand in GEE1. For Gaussian data, $\phi$ estimates residual scale; for binomial/Poisson responses the canonical scale is often fixed at one, although software can estimate a scale depending on options. Robust SEs come from `vbeta`; model-based SEs from `vbeta.naiv` are valid only under the working covariance model.
+
+For nonidentity links, GEE and GLMM coefficients differ. With a logistic random-intercept GLMM,
+$$
+\beta_{PA}\approx \frac{\beta_{SS}}{\sqrt{1+c^2\sigma_b^2}},
+\qquad c=\frac{16\sqrt3}{15\pi}\approx0.588,
+$$
+so population-averaged log-odds effects are typically attenuated toward zero. Under a probit link the corresponding factor is $(1+z_{ij}^{\mathsf T}Dz_{ij})^{-1/2}$; under the identity link the coefficients coincide.
+
+## 7. Diagnostics
+
+```{r}
+cluster_size <- dietox |> count(Pig, name = "n_i")
+summary(cluster_size$n_i)
+
+gee_diag <- dietox |>
+  mutate(
+    fitted = fitted(gee_ar1),
+    pearson = residuals(gee_ar1, type = "pearson")
+  )
+
+ggplot(gee_diag, aes(fitted, pearson)) +
+  geom_point(alpha = 0.5) + geom_hline(yintercept = 0, linetype = 2)
+
+ggplot(gee_diag, aes(Time, pearson, group = Pig)) +
+  geom_line(alpha = 0.15) + geom_smooth(aes(group = 1), se = FALSE)
+
+gee_covariance_table(gee_ar1) |>
+  mutate(se_ratio = robust_se / model_based_se)
+```
+
+Check subject sorting, unique subject-wave keys, cluster-size distribution, leverage from large clusters, mean-model residual trends, and sensitivity of estimates/SEs to plausible working correlations.
+
+## 8. Caveats
+
+- GEE coefficients are population-averaged; GLMM coefficients are subject-specific conditional on random effects. Equality generally fails for nonidentity links.
+- Sandwich validity is asymptotic in the number of independent clusters; small-cluster corrections are not the default in `geeglm()`.
+- Ordinary GEE is generally valid under MCAR, not arbitrary MAR dropout. Use weighted GEE or another valid missing-data method when observation depends on observed history.
+- `geeglm()` requires rows ordered by cluster and, for AR(1), correctly ordered waves.
+- Time-varying covariates can be external or endogenous; coefficients for endogenous covariates generally need a conditional/transition interpretation, and naive GEE can be biased when the covariate process depends on prior outcomes.
+- QIC is not AIC: it is based on quasi-likelihood and must be interpreted within comparable GEE specifications.
+- In `geepack`, `vbeta` is robust and `vbeta.naiv` is model-based. SAS/other R packages may label these `empirical` and `model-based`/`naive`; verify which covariance a printed table uses.
+- Scale estimation defaults differ across `geepack`, `gee`, and SAS `PROC GENMOD`/`PROC GEE`; set and report the rule explicitly.
+- **Source-backed:** estimating equations, sandwich inference, working correlations, QIC, scale, and PA interpretation follow the notes. **Standard-practice addition:** direct extraction helpers and `emmeans::emtrends()` are idiomatic R replacements for SAS contrasts.
+
+## 9. Source references
+
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf`, pp. 39--52, 62--68, and 77--80 (GEE, sandwich/model-based covariance, working correlation, QIC).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.1 - GEE_1.pdf`, pp. 8--19 (estimating equation and working covariance); `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.2 - GEE_2.pdf`, pp. 1--7 and 10--19 (association and scale estimation).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.3 - GEE_3.pdf`, pp. 1--9 (robust Wald/score inference).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf`, pp. 5--13 (marginalization and attenuation formula).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Kaicheng/Assignment6/Marginal Model.r`, lines 35--184 (R working-correlation fits, robust/naive SEs, alpha, odds ratios, Wald tests).
+- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/HW3/STAT571-HW3-WenbinWu-Code.Rmd`, GEE code chunks (independence/exchangeable comparisons and simulation).
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-021.pdf`, pp. 3--37 (time-varying covariates and lagged exposure models).
