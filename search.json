@@ -1,0 +1,1332 @@
+[
+  {
+    "objectID": "03-linear-mixed-models.html",
+    "href": "03-linear-mixed-models.html",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "",
+    "text": "Gaussian marginal covariance models estimate population mean trajectories while representing within-subject dependence directly through \\(\\Sigma_i(\\theta)\\). Linear mixed models represent dependence through latent subject effects and target both population fixed effects and subject-specific predictions. Fixed-effect selection is compared under ML; covariance/random-effect estimation and final inference generally use REML when the fixed-effect design is unchanged.",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#aim",
+    "href": "03-linear-mixed-models.html#aim",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "",
+    "text": "Gaussian marginal covariance models estimate population mean trajectories while representing within-subject dependence directly through \\(\\Sigma_i(\\theta)\\). Linear mixed models represent dependence through latent subject effects and target both population fixed effects and subject-specific predictions. Fixed-effect selection is compared under ML; covariance/random-effect estimation and final inference generally use REML when the fixed-effect design is unchanged.",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#model-specification",
+    "href": "03-linear-mixed-models.html#model-specification",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nThe marginal model is \\[\nY_i\\sim N\\{X_i\\beta,\\Sigma_i(\\theta)\\}.\n\\] Examples include CS, \\(\\Sigma_{jk}=\\sigma^2\\{(1-\\rho)I(j=k)+\\rho\\}\\); discrete AR(1), \\(\\Sigma_{jk}=\\sigma^2\\rho^{|j-k|}\\); continuous AR(1), \\(\\sigma^2\\rho^{|t_j-t_k|}\\); Toeplitz, \\(\\Sigma_{jk}=\\sigma^2\\rho_{|j-k|}\\); and unstructured \\(\\Sigma\\).\nThe LMM is \\[\nY_i=X_i\\beta+Z_i b_i+\\varepsilon_i,qquad\nb_i\\sim N(0,D),\\quad \\varepsilon_i\\sim N(0,R_i),\\quad b_i\\perp\\varepsilon_i,\n\\] so \\(\\operatorname{Var}(Y_i)=Z_iDZ_i^{\\mathsf T}+R_i\\) and \\[\n\\widehat b_i=DZ_i^{\\mathsf T}V_i^{-1}(Y_i-X_i\\widehat\\beta).\n\\]",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#r-packagesfunctions",
+    "href": "03-linear-mixed-models.html#r-packagesfunctions",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nnlme::gls()/lme() are idiomatic when residual covariance structures are primary. lme4::lmer() is idiomatic for flexible random-effects models; lmerTest and pbkrtest add Satterthwaite/Kenward–Roger inference; broom.mixed tidies parameters; influence.ME supplies cluster-deletion influence diagnostics.",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#data",
+    "href": "03-linear-mixed-models.html#data",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "4. Data",
+    "text": "4. Data\nnlme::Orthodont contains four ordered measurements per subject. visit indexes equal occasion spacing; age is the actual continuous time.\n\ndata(\"Orthodont\", package = \"nlme\")\north &lt;- as.data.frame(Orthodont) |&gt;\n  arrange(Subject, age) |&gt;\n  group_by(Subject) |&gt;\n  mutate(visit = row_number(), age_c = age - 8, age_f = factor(age)) |&gt;\n  ungroup() |&gt;\n  mutate(Subject = factor(Subject))",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#fit",
+    "href": "03-linear-mixed-models.html#fit",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "5. Fit",
+    "text": "5. Fit\n\nDirect residual covariance models\n\nmean_formula &lt;- distance ~ Sex * age_c\nctrl &lt;- glsControl(opt = \"optim\", msMaxIter = 200)\n\ncov_models &lt;- list(\n  independence = gls(mean_formula, orth, method = \"REML\", control = ctrl),\n  CS = gls(mean_formula, orth,\n           correlation = corCompSymm(form = ~visit | Subject),\n           method = \"REML\", control = ctrl),\n  AR1 = gls(mean_formula, orth,\n            correlation = corAR1(form = ~visit | Subject),\n            method = \"REML\", control = ctrl),\n  CAR1 = gls(mean_formula, orth,\n             correlation = corCAR1(form = ~age | Subject),\n             method = \"REML\", control = ctrl),\n  spatial_exponential = gls(mean_formula, orth,\n                            correlation = corExp(form = ~age | Subject, nugget = TRUE),\n                            method = \"REML\", control = ctrl),\n  unstructured = gls(mean_formula, orth,\n                     correlation = corSymm(form = ~visit | Subject),\n                     weights = varIdent(form = ~1 | age_f),\n                     method = \"REML\", control = ctrl)\n)\n\ncov_comparison &lt;- do.call(\n  rbind,\n  lapply(names(cov_models), function(nm) {\n    z &lt;- cov_models[[nm]]\n    data.frame(model = nm, logLik = as.numeric(logLik(z)), AIC = AIC(z), BIC = BIC(z))\n  })\n)\ncov_comparison[order(cov_comparison$AIC), ]\n\n\n  \n\n\nanova(cov_models$independence, cov_models$CS)  # nested LRT; same fixed-effects design\n\n\n  \n\n\n\n\n\nToeplitz covariance\nnlme has no dedicated freely estimated Toeplitz corStruct. The exact idiomatic implementation below uses glmmTMB; the nlme::corARMA() family is stationary but is not, in general, the same parameter space as an unrestricted Toeplitz matrix.\n\nif (requireNamespace(\"glmmTMB\", quietly = TRUE)) {\n  library(glmmTMB)\n  toeplitz_fit &lt;- glmmTMB::glmmTMB(\n    distance ~ Sex * age_c + homtoep(0 + age_f | Subject),\n    dispformula = ~0,\n    data = orth,\n    REML = TRUE\n  )\n  summary(toeplitz_fit)\n}\n\n Family: gaussian  ( identity )\nFormula:          distance ~ Sex * age_c + homtoep(0 + age_f | Subject)\nDispersion:                ~0\nData: orth\n\n      AIC       BIC    logLik -2*log(L)  df.resid \n    448.2     469.6    -216.1     432.2       100 \n\nRandom effects:\n\nConditional model:\n Groups  Name    Variance Std.Dev. Corr           \n Subject age_f8  5.283    2.298                   \n         age_f10 5.283    2.298    0.64           \n         age_f12 5.283    2.298    0.70 0.64      \n         age_f14 5.283    2.298    0.48 0.70 0.64 \nNumber of obs: 108, groups:  Subject, 27\n\nConditional model:\n            Estimate Std. Error z value Pr(&gt;|z|)    \n(Intercept) 21.93238    0.43189   50.78   &lt;2e-16 ***\nSex1         0.71635    0.43202    1.66   0.0973 .  \nage_c        0.63659    0.06739    9.45   &lt;2e-16 ***\nSex1:age_c   0.16070    0.06745    2.38   0.0172 *  \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n\n\n\nFixed-effect and random-effect selection\n\nm_mean_reduced_ml &lt;- lmer(distance ~ Sex + age_c + (age_c | Subject),\n                          data = orth, REML = FALSE)\nm_mean_full_ml &lt;- lmer(distance ~ Sex * age_c + (age_c | Subject),\n                       data = orth, REML = FALSE)\nanova(m_mean_reduced_ml, m_mean_full_ml)       # fixed effects: ML\n\n\n  \n\n\nm_ri_reml &lt;- lmer(distance ~ Sex * age_c + (1 | Subject), data = orth, REML = TRUE)\nm_rs_reml &lt;- lmer(distance ~ Sex * age_c + (age_c | Subject), data = orth, REML = TRUE)\nAIC(m_ri_reml, m_rs_reml)                      # same fixed effects: REML comparison\n\n\n  \n\n\nfinal_lmm &lt;- m_rs_reml\nsummary(final_lmm)\n\nLinear mixed model fit by REML ['lmerMod']\nFormula: distance ~ Sex * age_c + (age_c | Subject)\n   Data: orth\n\nREML criterion at convergence: 435.4\n\nScaled residuals: \n    Min      1Q  Median      3Q     Max \n-3.1681 -0.3859  0.0071  0.4452  3.8495 \n\nRandom effects:\n Groups   Name        Variance Std.Dev. Corr  \n Subject  (Intercept) 3.23394  1.7983         \n          age_c       0.03252  0.1803   -0.09 \n Residual             1.71621  1.3100         \nNumber of obs: 108, groups:  Subject, 27\n\nFixed effects:\n            Estimate Std. Error t value\n(Intercept) 21.91236    0.41244  53.129\nSex1         0.70327    0.41244   1.705\nage_c        0.63196    0.06737   9.381\nSex1:age_c   0.15241    0.06737   2.262\n\nCorrelation of Fixed Effects:\n           (Intr) Sex1   age_c \nSex1       -0.185              \nage_c      -0.396  0.073       \nSex1:age_c  0.073 -0.396 -0.185\n\n\n\n\nMultilevel/crossed effects and nonlinear trajectories\n\n# Crossed clustering example covered by the multilevel-model extension.\ndata(\"Penicillin\", package = \"lme4\")\ncrossed_lmm &lt;- lmer(diameter ~ 1 + (1 | plate) + (1 | sample), data = Penicillin)\nsummary(crossed_lmm)\n\nLinear mixed model fit by REML ['lmerMod']\nFormula: diameter ~ 1 + (1 | plate) + (1 | sample)\n   Data: Penicillin\n\nREML criterion at convergence: 330.9\n\nScaled residuals: \n     Min       1Q   Median       3Q      Max \n-2.07923 -0.67140  0.06292  0.58377  2.97959 \n\nRandom effects:\n Groups   Name        Variance Std.Dev.\n plate    (Intercept) 0.7169   0.8467  \n sample   (Intercept) 3.7311   1.9316  \n Residual             0.3024   0.5499  \nNumber of obs: 144, groups:  plate, 24; sample, 6\n\nFixed effects:\n            Estimate Std. Error t value\n(Intercept)  22.9722     0.8086   28.41\n\n# Nonlinear mixed growth curve: subject-specific asymptote.\ndata(\"Loblolly\", package = \"datasets\")\nstart_nls &lt;- getInitial(height ~ SSasymp(age, Asym, R0, lrc), data = Loblolly)\nnlmm_growth &lt;- nlme(\n  height ~ SSasymp(age, Asym, R0, lrc),\n  data = Loblolly,\n  fixed = Asym + R0 + lrc ~ 1,\n  random = Asym ~ 1 | Seed,\n  start = start_nls\n)\nsummary(nlmm_growth)\n\nNonlinear mixed-effects model fit by maximum likelihood\n  Model: height ~ SSasymp(age, Asym, R0, lrc) \n  Data: Loblolly \n       AIC    BIC    logLik\n  239.4859 251.64 -114.7429\n\nRandom effects:\n Formula: Asym ~ 1 | Seed\n            Asym  Residual\nStdDev: 3.650644 0.7188625\n\nFixed effects:  Asym + R0 + lrc ~ 1 \n         Value Std.Error DF   t-value p-value\nAsym 101.44874 2.4616422 68  41.21181       0\nR0    -8.62744 0.3179514 68 -27.13446       0\nlrc   -3.23374 0.0342697 68 -94.36129       0\n Correlation: \n    Asym   R0    \nR0   0.704       \nlrc -0.908 -0.827\n\nStandardized Within-Group Residuals:\n        Min          Q1         Med          Q3         Max \n-2.23603495 -0.62387017  0.05914274  0.65725280  1.95791547 \n\nNumber of Observations: 84\nNumber of Groups: 14 \n\n\n\n\nSatterthwaite and Kenward–Roger denominator df\n\nif (requireNamespace(\"lmerTest\", quietly = TRUE)) {\n  final_lt &lt;- lmerTest::lmer(\n    distance ~ Sex * age_c + (age_c | Subject), data = orth, REML = TRUE\n  )\n  anova(final_lt, ddf = \"Satterthwaite\")\n  anova(final_lt, ddf = \"Kenward-Roger\")\n}\n\n\n  \n\n\nif (requireNamespace(\"pbkrtest\", quietly = TRUE)) {\n  kr_full &lt;- lmer(distance ~ Sex * age_c + (age_c | Subject), orth, REML = TRUE)\n  kr_reduced &lt;- lmer(distance ~ Sex + age_c + (age_c | Subject), orth, REML = TRUE)\n  pbkrtest::KRmodcomp(kr_full, kr_reduced)\n}\n\nlarge : distance ~ Sex * age_c + (age_c | Subject)\nsmall : distance ~ Sex + age_c + (age_c | Subject)\n         stat     ndf     ddf F.scaling p.value  \nFtest  5.1186  1.0000 25.0000         1 0.03261 *\n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n\n\n\nBoundary test for one variance component\n\nri_ml &lt;- lmer(distance ~ Sex * age_c + (1 | Subject), orth, REML = FALSE)\nols_ml &lt;- lm(distance ~ Sex * age_c, orth)\nlr_ri &lt;- max(0, 2 * (as.numeric(logLik(ri_ml)) - as.numeric(logLik(ols_ml))))\np_mixture &lt;- 0.5 * stats::pchisq(lr_ri, df = 1, lower.tail = FALSE)\nc(LR = lr_ri, p_50_50_mixture = p_mixture)\n\n             LR p_50_50_mixture \n   4.960270e+01    9.412714e-13",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#extract-interpret",
+    "href": "03-linear-mixed-models.html#extract-interpret",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\n\nfixef(final_lmm)\n\n(Intercept)        Sex1       age_c  Sex1:age_c \n 21.9123580   0.7032670   0.6319602   0.1524148 \n\nas.data.frame(VarCorr(final_lmm))\n\n\n  \n\n\nranef(final_lmm)$Subject |&gt; head()              # BLUPs/conditional modes\n\n\n  \n\n\nconfint(final_lmm, parm = \"theta_\", method = \"profile\")\n\n           2.5 %    97.5 %\n.sig01  1.105809 2.4887325\n.sig02  0.000000 0.3385631\n.sig03 -1.000000 1.0000000\n.sigma  1.097032 1.5884934\n\nri_only_icc &lt;- icc_random_intercept(m_ri_reml)\nri_only_icc\n\n[1] 0.6318389\n\nif (requireNamespace(\"broom.mixed\", quietly = TRUE)) {\n  broom.mixed::tidy(final_lmm, effects = c(\"fixed\", \"ran_pars\"), conf.int = TRUE)\n}\n\n\n  \n\n\n\nFixed effects describe the conditional mean at \\(b_i=0\\), which equals the population mean under the identity link. Random-intercept and random-slope variances quantify unexplained between-subject heterogeneity; their correlation describes association between baseline level and change. BLUPs are shrunken subject predictions, not observed subject parameters. The random-intercept ICC is \\(\\tau_0^2/(\\tau_0^2+\\sigma^2)\\); with random slopes, correlation is time-dependent and a single ICC is inadequate. Satterthwaite/KR output reports approximate denominator df; base lmer() reports no p-values by design.",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#diagnostics",
+    "href": "03-linear-mixed-models.html#diagnostics",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\nlme4::isSingular(final_lmm, tol = 1e-4)\n\n[1] FALSE\n\nfinal_lmm@optinfo$conv$lme4$messages\n\nNULL\n\ndiag_df &lt;- data.frame(\n  fitted = fitted(final_lmm),\n  conditional_resid = resid(final_lmm),\n  pearson_resid = resid(final_lmm, type = \"pearson\")\n)\nggplot(diag_df, aes(fitted, pearson_resid)) + geom_point() + geom_hline(yintercept = 0, lty = 2)\n\n\n\n\n\n\n\nqqnorm(diag_df$conditional_resid); qqline(diag_df$conditional_resid)\n\n\n\n\n\n\n\nre &lt;- ranef(final_lmm)$Subject\nqqnorm(re[[\"(Intercept)\"]]); qqline(re[[\"(Intercept)\"]])\n\n\n\n\n\n\n\nvg &lt;- Variogram(cov_models$AR1, form = ~age | Subject, resType = \"normalized\")\nplot(vg, smooth = TRUE)\n\n\n\n\n\n\n\nif (requireNamespace(\"influence.ME\", quietly = TRUE)) {\n  infl &lt;- influence.ME::influence(final_lmm, group = \"Subject\")\n  head(sort(cooks.distance(infl), decreasing = TRUE))\n}\n\n[1] 0.31274688 0.13727388 0.11629945 0.11008371 0.08223782 0.03808181\n\n\nFor singular or nonconvergent fits: rescale/center time, inspect observations per random coefficient, simplify random-effect correlations with (1 + age_c || Subject), compare optimizers, and retain complexity only when scientifically and empirically supported.",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#caveats",
+    "href": "03-linear-mixed-models.html#caveats",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nCompare fixed-effect mean structures under ML. REML likelihoods from different fixed-effect column spaces are not comparable; compare covariance/random-effect structures under REML only with the same fixed effects.\nLRTs are justified for nested models; AIC/BIC may compare nonnested covariance structures but do not account for selection uncertainty.\nFor a single variance component under a regular scalar boundary problem, the asymptotic null is \\(\\tfrac12\\chi_0^2+\\tfrac12\\chi_1^2\\), not plain \\(\\chi_1^2\\). Multiple components or unidentified correlations require a different mixture or parametric bootstrap.\nSAS PROC MIXED often requests DDFM=KR or DDFM=SAT; base lmer() supplies neither automatically. lmerTest defaults to Satterthwaite unless changed.\nWald CIs for variance parameters are unreliable near zero; prefer profile-likelihood or bootstrap intervals.\nnlme::corCAR1() and corExp() use actual time distances; corAR1() uses integer occasion gaps.\nnlme does not natively expose unrestricted Toeplitz covariance; the glmmTMB homogeneous Toeplitz term homtoep() is an explicit R-vs-SAS implementation difference. Use toep() when occasion-specific marginal variances are required.\nMultilevel random effects require enough independent levels at each hierarchy; a factor with only a few levels should ordinarily be fixed. Nonlinear mixed models are sensitive to starting values and parameterization.\nSource-backed: model-building order, covariance choices, REML/ML, boundary tests, BLUPs, and diagnostics follow the source notes. Standard-practice additions: broom.mixed, influence.ME, and glmmTMB Toeplitz syntax replace or extend SAS output.",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "03-linear-mixed-models.html#source-references",
+    "href": "03-linear-mixed-models.html#source-references",
+    "title": "3. Gaussian covariance models and linear mixed models",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-007.pdf, pp. 5–31 and 50–61 (correlated Gaussian model, estimation, covariance structures).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/[Important] BIOS-767-Part-009.pdf, pp. 4–18, 77–91, and 99–119 (mean/covariance selection; CS, AR, unstructured; ML/REML).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-010.pdf, pp. 5–24, 40–58, and 62–73 (LMM, covariance decomposition, BLUPs, ICC).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-011.pdf, pp. 4–25 and 42–54 (random-effect tests, boundary, fixed-effect inference, KR/Satterthwaite).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.0 - LMM_1.pdf, pp. 2–16 and 27–32; /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.1 - LMM_2.pdf, pp. 1–19 and 24–29 (LMM, BLUP, ML/REML, inference).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.3 - LMM_4.pdf, pp. 1–16 (serial correlation and diagnostics); /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.4 - LMM_Review.pdf, pp. 1–3 (boundary tests and review).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Fumin/767HW5.Rmd, code chunk data-prep and diagnostic chunks (R random intercept/slope, BLUP, residual and influence code).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-016.pdf, pp. 4–23 (multilevel/clustered models); /Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf, p. 90 (nonlinear mixed models).",
+    "crumbs": [
+      "Core chapters",
+      "3. Gaussian covariance models and linear mixed models"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html",
+    "href": "A1-inference-diagnostics.html",
+    "title": "A1. Inference and diagnostics",
+    "section": "",
+    "text": "This appendix consolidates inferential and diagnostic operations by model class. Diagnostics target mean/link specification, residual covariance, random-effects adequacy, cluster influence, numerical convergence, and distributional dispersion; no single residual definition diagnoses all components.",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#aim",
+    "href": "A1-inference-diagnostics.html#aim",
+    "title": "A1. Inference and diagnostics",
+    "section": "",
+    "text": "This appendix consolidates inferential and diagnostic operations by model class. Diagnostics target mean/link specification, residual covariance, random-effects adequacy, cluster influence, numerical convergence, and distributional dispersion; no single residual definition diagnoses all components.",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#model-specification",
+    "href": "A1-inference-diagnostics.html#model-specification",
+    "title": "A1. Inference and diagnostics",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nFor an LMM, marginal residuals are \\(r_i^{(m)}=Y_i-X_i\\widehat\\beta\\) and conditional residuals are \\(r_i^{(c)}=Y_i-X_i\\widehat\\beta-Z_i\\widehat b_i\\). For GLM/GLMM mean \\(\\widehat\\mu\\), Pearson residuals are \\((Y-\\widehat\\mu)/\\sqrt{\\widehat{\\operatorname{Var}}(Y)}\\); deviance residuals are signed square roots of unit-deviance contributions. Cluster influence compares \\(\\widehat\\beta\\) with \\(\\widehat\\beta_{(-i)}\\).",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#r-packagesfunctions",
+    "href": "A1-inference-diagnostics.html#r-packagesfunctions",
+    "title": "A1. Inference and diagnostics",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nresiduals() exposes model-specific residuals; nlme::Variogram() assesses remaining lag dependence; lme4::isSingular() and optimizer output assess fitted random-effects geometry; influence.ME supplies cluster deletion; DHARMa supplies simulation-based GLMM diagnostics; performance offers convenient standardized checks.",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#data",
+    "href": "A1-inference-diagnostics.html#data",
+    "title": "A1. Inference and diagnostics",
+    "section": "4. Data",
+    "text": "4. Data\nOrthodont supplies a Gaussian LMM example and MASS::epil supplies a repeated-count GLMM example.\n\ndata(\"Orthodont\", package = \"nlme\")\north &lt;- as.data.frame(Orthodont) |&gt;\n  arrange(Subject, age) |&gt;\n  mutate(Subject = factor(Subject), age_c = age - 8, visit = ave(age, Subject, FUN = seq_along))\n\ndata(\"epil\", package = \"MASS\")\nepil &lt;- MASS::epil |&gt;\n  mutate(subject = factor(subject), period_c = period - 1)",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#fit",
+    "href": "A1-inference-diagnostics.html#fit",
+    "title": "A1. Inference and diagnostics",
+    "section": "5. Fit",
+    "text": "5. Fit\n\nlmm &lt;- lmer(distance ~ Sex * age_c + (age_c | Subject), orth, REML = TRUE)\ngls_ar1 &lt;- gls(\n  distance ~ Sex * age_c, orth,\n  correlation = corAR1(form = ~visit | Subject), method = \"REML\"\n)\ncount_glmm &lt;- glmer(\n  y ~ trt * period_c + lbase + lage + (1 | subject),\n  epil, family = poisson, nAGQ = 1\n)",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#extract-interpret",
+    "href": "A1-inference-diagnostics.html#extract-interpret",
+    "title": "A1. Inference and diagnostics",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\n\nif (requireNamespace(\"lmerTest\", quietly = TRUE)) {\n  lmm_lt &lt;- lmerTest::as_lmerModLmerTest(lmm)\n  anova(lmm_lt, ddf = \"Satterthwaite\")\n  anova(lmm_lt, ddf = \"Kenward-Roger\")\n}\n\n\n  \n\n\nif (requireNamespace(\"pbkrtest\", quietly = TRUE)) {\n  lmm_reduced &lt;- lmer(distance ~ Sex + age_c + (age_c | Subject), orth, REML = TRUE)\n  pbkrtest::KRmodcomp(lmm, lmm_reduced)\n}\n\nlarge : distance ~ Sex * age_c + (age_c | Subject)\nsmall : distance ~ Sex + age_c + (age_c | Subject)\n         stat     ndf     ddf F.scaling p.value  \nFtest  5.1186  1.0000 25.0000         1 0.03261 *\n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nconfint(lmm, parm = \"theta_\", method = \"profile\")\n\n           2.5 %    97.5 %\n.sig01  1.105809 2.4887325\n.sig02  0.000000 0.3385631\n.sig03 -1.000000 1.0000000\n.sigma  1.097032 1.5884934\n\n\nFixed-effect tests require the intended estimable function and denominator-df method. Variance-component CIs should respect the zero boundary. For nested fixed-effect LMM comparisons refit under ML unless using a KR comparison specifically formulated for REML fits with common random structure.",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#diagnostics",
+    "href": "A1-inference-diagnostics.html#diagnostics",
+    "title": "A1. Inference and diagnostics",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\nGaussian marginal and conditional residuals\n\nlmm_diag &lt;- data.frame(\n  fitted_conditional = fitted(lmm),\n  residual_conditional = resid(lmm),\n  residual_pearson = resid(lmm, type = \"pearson\"),\n  fitted_marginal = predict(lmm, re.form = NA),\n  residual_marginal = orth$distance - predict(lmm, re.form = NA)\n)\n\nggplot(lmm_diag, aes(fitted_conditional, residual_pearson)) +\n  geom_point() + geom_hline(yintercept = 0, linetype = 2)\n\n\n\n\n\n\n\nqqnorm(lmm_diag$residual_conditional); qqline(lmm_diag$residual_conditional)\n\n\n\n\n\n\n\nre &lt;- ranef(lmm)$Subject\nqqnorm(re[[\"(Intercept)\"]]); qqline(re[[\"(Intercept)\"]])\n\n\n\n\n\n\n\nqqnorm(re[[\"age_c\"]]); qqline(re[[\"age_c\"]])\n\n\n\n\n\n\n\n\n\n\nSerial dependence and influence\n\nvg &lt;- Variogram(gls_ar1, form = ~age | Subject, resType = \"normalized\")\nplot(vg, smooth = TRUE)\n\n\n\n\n\n\n\nif (requireNamespace(\"influence.ME\", quietly = TRUE)) {\n  infl &lt;- influence.ME::influence(lmm, group = \"Subject\")\n  cd &lt;- cooks.distance(infl)\n  head(sort(cd, decreasing = TRUE))\n  dfbetas(infl)[1:5, , drop = FALSE]\n}\n\n     (Intercept)         Sex1        age_c   Sex1:age_c\nM16 -0.099657703 -0.099657703 -0.113240136 -0.113240136\nM05 -0.173159480 -0.173159480  0.031415829  0.031415829\nM02 -0.123789296 -0.123789296 -0.004484759 -0.004484759\nM11  0.002685868  0.002685868 -0.228609402 -0.228609402\nM07 -0.099659843 -0.099659843  0.007474398  0.007474398\n\n\n\n\nGLMM residuals, dispersion, and convergence\n\nglmm_diag &lt;- data.frame(\n  fitted = fitted(count_glmm),\n  pearson = residuals(count_glmm, type = \"pearson\"),\n  deviance = residuals(count_glmm, type = \"deviance\")\n)\nggplot(glmm_diag, aes(fitted, pearson)) + geom_point() + geom_hline(yintercept = 0, lty = 2)\n\n\n\n\n\n\n\nsum(glmm_diag$pearson^2) / (nobs(count_glmm) - length(fixef(count_glmm)))\n\n[1] 1.577399\n\nisSingular(count_glmm)\n\n[1] FALSE\n\ncount_glmm@optinfo$conv$lme4$messages\n\nNULL\n\nif (requireNamespace(\"DHARMa\", quietly = TRUE)) {\n  dh &lt;- DHARMa::simulateResiduals(count_glmm, n = 250, plot = FALSE)\n  plot(dh)\n  DHARMa::testDispersion(dh)\n  DHARMa::testZeroInflation(dh)\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n    DHARMa zero-inflation test via comparison to expected zeros with simulation under H0 =\n    fitted model\n\ndata:  simulationOutput\nratioObsSim = 1.9334, p-value = 0.008\nalternative hypothesis: two.sided\n\nif (requireNamespace(\"performance\", quietly = TRUE) &&\n    requireNamespace(\"see\", quietly = TRUE)) {\n  performance::check_model(count_glmm)\n}",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#caveats",
+    "href": "A1-inference-diagnostics.html#caveats",
+    "title": "A1. Inference and diagnostics",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nMarginal residuals retain random-effect variation; conditional residuals depend on estimated BLUPs and can mask random-effect misspecification.\nQQ plots of BLUPs do not directly test the latent random-effects distribution because BLUPs are heteroscedastic, correlated, and shrunken.\nPearson/deviance residuals are discrete and nonnormal in GLMMs; simulation-based residuals are usually more interpretable.\nCook’s distance and DFBETAs should be deleted by independent cluster, not by row, for longitudinal data.\nA flat residual variogram is evidence against remaining second-order lag structure only after the mean and random effects are adequate.\nSingularity is a boundary estimate, not an optimizer failure; convergence warnings require gradient/Hessian and rescaling checks before changing optimizers.\nSAS PROC MIXED influence measures and R package measures can use different scaling; compare rankings and deleted estimates, not labels alone.\nSource-backed: residual taxonomy, variograms, and influence follow BIOS 767/STAT 571. Standard-practice addition: DHARMa, performance, and influence.ME provide native R diagnostics.",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "A1-inference-diagnostics.html#source-references",
+    "href": "A1-inference-diagnostics.html#source-references",
+    "title": "A1. Inference and diagnostics",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-012.pdf, pp. 5–14 and 26–50 (marginal/conditional residuals, variograms, influence).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.3 - LMM_4.pdf, pp. 1–16 (serial correlation, residuals, random-effect checks).\n/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf, pp. 86–92 (cumulative residuals and cluster diagnostics).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW4/PROGRAMS_HW4/02-HW4-P1C.sas, lines 103–216 (observation/case deletion influence and KR inference).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Fumin/767HW5.Rmd, residual, QQ, and influence code chunks.",
+    "crumbs": [
+      "Reference",
+      "A1. Inference and diagnostics"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html",
+    "href": "02-rm-anova-manova.html",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "",
+    "text": "Repeated-measures ANOVA tests between-subject, within-subject time, and group-by-time effects under a structured univariate error model. The multivariate approach instead treats each occasion as a response component and tests profile parallelism, coincidence, and flatness without sphericity, but requires complete, commonly scheduled response vectors.",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#aim",
+    "href": "02-rm-anova-manova.html#aim",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "",
+    "text": "Repeated-measures ANOVA tests between-subject, within-subject time, and group-by-time effects under a structured univariate error model. The multivariate approach instead treats each occasion as a response component and tests profile parallelism, coincidence, and flatness without sphericity, but requires complete, commonly scheduled response vectors.",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#model-specification",
+    "href": "02-rm-anova-manova.html#model-specification",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nFor group \\(g\\), subject \\(i\\), and occasion \\(j\\), \\[\nY_{gij}=\\mu+\\alpha_g+\\tau_j+(\\alpha\\tau)_{gj}+u_{gi}+e_{gij}.\n\\] The univariate F test for within-subject effects requires \\(C\\Sigma C^{\\mathsf T}=\\sigma^2 I\\) for an orthonormal within-subject contrast matrix \\(C\\). Profile hypotheses are \\[\nH_{\\mathrm{parallel}}:C\\mu_1=\\cdots=C\\mu_G,\\quad\nH_{\\mathrm{coincident}}:\\mu_1=\\cdots=\\mu_G,\\quad\nH_{\\mathrm{flat}}:C\\bar\\mu=0.\n\\]",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#r-packagesfunctions",
+    "href": "02-rm-anova-manova.html#r-packagesfunctions",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nBase aov() gives the classical split-plot ANOVA decomposition. car::Anova() applied to an mlm supplies multivariate tests and Greenhouse–Geisser/Huynh–Feldt corrected univariate tests. emmeans supplies estimable profile contrasts and multiplicity adjustments.",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#data",
+    "href": "02-rm-anova-manova.html#data",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "4. Data",
+    "text": "4. Data\nnlme::Orthodont is balanced at ages 8, 10, 12, and 14; the subject is Subject, the between-subject factor is Sex, and distance is continuous.\n\ndata(\"Orthodont\", package = \"nlme\")\north &lt;- as.data.frame(Orthodont) |&gt;\n  mutate(Subject = factor(Subject), age_f = factor(age))\nwith(orth, table(Sex, age_f))\n\n        age_f\nSex       8 10 12 14\n  Male   16 16 16 16\n  Female 11 11 11 11",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#fit",
+    "href": "02-rm-anova-manova.html#fit",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "5. Fit",
+    "text": "5. Fit\n\nUnivariate repeated-measures ANOVA\n\nrm_aov &lt;- aov(distance ~ Sex * age_f + Error(Subject / age_f), data = orth)\nsummary(rm_aov)\n\n\nError: Subject\n          Df Sum Sq Mean Sq F value  Pr(&gt;F)   \nSex        1  140.5  140.46   9.292 0.00538 **\nResiduals 25  377.9   15.12                   \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nError: Subject:age_f\n          Df Sum Sq Mean Sq F value   Pr(&gt;F)    \nage_f      3 237.19   79.06  40.032 1.49e-15 ***\nSex:age_f  3  13.99    4.66   2.362   0.0781 .  \nResiduals 75 148.13    1.98                     \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n\n\n\nMultivariate repeated-measures model\n\north_wide &lt;- orth |&gt;\n  select(Subject, Sex, age_f, distance) |&gt;\n  pivot_wider(names_from = age_f, values_from = distance) |&gt;\n  arrange(Subject)\n\nY &lt;- as.matrix(orth_wide[c(\"8\", \"10\", \"12\", \"14\")])\nmlm_fit &lt;- lm(Y ~ Sex, data = orth_wide)\n\nidata &lt;- data.frame(age_f = factor(c(8, 10, 12, 14)))\nif (requireNamespace(\"car\", quietly = TRUE)) {\n  rm_tests &lt;- car::Anova(mlm_fit, idata = idata, idesign = ~age_f, type = 3)\n  summary(rm_tests, multivariate = TRUE)   # Pillai, Wilks, Hotelling-Lawley, Roy\n  summary(rm_tests, multivariate = FALSE)  # sphericity tests and GG/HF corrections\n}\n\n\nUnivariate Type III Repeated-Measures ANOVA Assuming Sphericity\n\n            Sum Sq num Df Error SS den Df   F value    Pr(&gt;F)    \n(Intercept)  59119      1   377.91     25 3910.8356 &lt; 2.2e-16 ***\nSex            140      1   377.91     25    9.2921  0.005375 ** \nage_f          209      3   148.13     75   35.3473 2.397e-14 ***\nSex:age_f       14      3   148.13     75    2.3616  0.078058 .  \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n\nMauchly Tests for Sphericity\n\n          Test statistic p-value\nage_f            0.73533 0.20009\nSex:age_f        0.73533 0.20009\n\n\nGreenhouse-Geisser and Huynh-Feldt Corrections\n for Departure from Sphericity\n\n          GG eps Pr(&gt;F[GG])    \nage_f     0.8672  9.803e-13 ***\nSex:age_f 0.8672    0.08777 .  \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n            HF eps   Pr(&gt;F[HF])\nage_f     0.976876 4.571448e-14\nSex:age_f 0.976876 7.966788e-02\n\n\n\n\nProfile contrasts through a correlated Gaussian model\n\nprofile_gls &lt;- nlme::gls(\n  distance ~ Sex * age_f,\n  data = orth,\n  correlation = nlme::corSymm(form = ~ 1 | Subject),\n  weights = nlme::varIdent(form = ~ 1 | age_f),\n  method = \"REML\"\n)\n\nif (requireNamespace(\"emmeans\", quietly = TRUE)) {\n  emm &lt;- emmeans::emmeans(profile_gls, ~ Sex * age_f)\n  emmeans::joint_tests(emm)                       # omnibus estimable functions\n  emmeans::contrast(emm, \"consec\", by = \"Sex\")  # adjacent-time changes within sex\n  emmeans::contrast(\n    emmeans::contrast(emm, \"consec\", by = \"Sex\"),\n    \"revpairwise\",\n    by = NULL,\n    adjust = \"holm\"\n  )                                               # differences of changes\n}\n\n contrast                                                estimate    SE   df t.ratio p.value\n (age_f12 - age_f10 Male) - (age_f10 - age_f8 Male)        0.9688 0.931 25.1   1.041  1.0000\n (age_f14 - age_f12 Male) - (age_f10 - age_f8 Male)        0.8125 0.510 25.0   1.592  1.0000\n (age_f14 - age_f12 Male) - (age_f12 - age_f10 Male)      -0.1562 0.915 24.7  -0.171  1.0000\n (age_f10 - age_f8 Female) - (age_f10 - age_f8 Male)       0.1080 0.799 25.4   0.135  1.0000\n (age_f10 - age_f8 Female) - (age_f12 - age_f10 Male)     -0.8608 0.823 38.5  -1.045  1.0000\n (age_f10 - age_f8 Female) - (age_f14 - age_f12 Male)     -0.7045 0.760 39.7  -0.927  1.0000\n (age_f12 - age_f10 Female) - (age_f10 - age_f8 Male)     -0.0739 0.834 37.3  -0.089  1.0000\n (age_f12 - age_f10 Female) - (age_f12 - age_f10 Male)    -1.0426 0.857 24.9  -1.217  1.0000\n (age_f12 - age_f10 Female) - (age_f14 - age_f12 Male)    -0.8864 0.796 31.9  -1.113  1.0000\n (age_f12 - age_f10 Female) - (age_f10 - age_f8 Female)   -0.1818 1.120 25.1  -0.162  1.0000\n (age_f14 - age_f12 Female) - (age_f10 - age_f8 Male)      0.0625 0.741 41.9   0.084  1.0000\n (age_f14 - age_f12 Female) - (age_f12 - age_f10 Male)    -0.9062 0.767 33.3  -1.182  1.0000\n (age_f14 - age_f12 Female) - (age_f14 - age_f12 Male)    -0.7500 0.698 24.6  -1.074  1.0000\n (age_f14 - age_f12 Female) - (age_f10 - age_f8 Female)   -0.0455 0.615 25.0  -0.074  1.0000\n (age_f14 - age_f12 Female) - (age_f12 - age_f10 Female)   0.1364 1.100 24.7   0.124  1.0000\n\nDegrees-of-freedom method: appx-satterthwaite \nP value adjustment: holm method for 15 tests \n\n\n\n\nRepeated-measures sample size from a planned contrast\nFor two equally allocated groups and planned contrast \\(c\\), a normal-approximation calculation uses \\(\\operatorname{Var}(c^{\\mathsf T}\\bar Y_1-c^{\\mathsf T}\\bar Y_0)=4c^{\\mathsf T}\\Sigma c/N\\), where \\(N\\) is total sample size.\n\nSigma_plan &lt;- stats::cov(Y)\nc_change &lt;- c(-1, 0, 0, 1)            # age-14 minus age-8 change\ndelta &lt;- 2                              # target difference in mean changes\nalpha &lt;- 0.05\npower &lt;- 0.80\nN_total &lt;- ceiling(\n  4 * drop(t(c_change) %*% Sigma_plan %*% c_change) *\n    (qnorm(1 - alpha / 2) + qnorm(power))^2 / delta^2\n)\nN_total + (N_total %% 2)                # enforce equal allocation\n\n[1] 44",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#extract-interpret",
+    "href": "02-rm-anova-manova.html#extract-interpret",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\nThe Sex:age_f test is the parallelism test; if rejected, report time-specific or change-specific contrasts rather than an average sex effect. Conditional on parallelism, the Sex test addresses coincidence and the age_f test addresses flatness. Greenhouse–Geisser and Huynh–Feldt results alter numerator/denominator degrees of freedom, whereas multivariate Pillai/Wilks tests do not impose sphericity.",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#diagnostics",
+    "href": "02-rm-anova-manova.html#diagnostics",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\nstopifnot(!anyNA(Y), length(unique(orth$age_f)) == ncol(Y))\n\npar(mfrow = c(1, 2))\nplot(fitted(profile_gls), resid(profile_gls, type = \"normalized\"),\n     xlab = \"Fitted\", ylab = \"Normalized residual\")\nabline(h = 0, lty = 2)\nqqnorm(resid(profile_gls, type = \"normalized\")); qqline(resid(profile_gls, type = \"normalized\"))\n\n\n\n\n\n\n\npar(mfrow = c(1, 1))\n\nFor classical MANOVA, verify complete response vectors, common occasions, independent subjects, and adequate subjects relative to the number of occasions and groups.",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#caveats",
+    "href": "02-rm-anova-manova.html#caveats",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nBase aov() uses sequential sums of squares; term order matters in unbalanced designs. car::Anova(type = 3) requires deliberate contrasts and estimability checks.\nA nonsignificant interaction does not mechanically require refitting before Type III main-effect tests; interpretations remain conditional on the chosen contrast coding.\nMANOVA avoids sphericity but is complete-case and becomes unstable as the response dimension approaches the number of independent subjects.\nemmeans contrasts from gls use the fitted covariance model and are the idiomatic R analogue of SAS ESTIMATE/CONTRAST statements.\nSource-backed: RM-ANOVA/MANOVA hypotheses and profile sequence are from BIOS 767. Standard-practice addition: the car and emmeans implementations replace SAS GLM/MIXED syntax.",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "02-rm-anova-manova.html#source-references",
+    "href": "02-rm-anova-manova.html#source-references",
+    "title": "2. Repeated-measures ANOVA, MANOVA, and profile analysis",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-005.pdf, pp. 7–14 and 24–39 (univariate RM-ANOVA and sphericity).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-006.pdf, pp. 4–23 (MANOVA and profile tests).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/anova-refitting.pdf, pp. 1–5 (Type I versus Type III tests and refitting).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/03-HW3-Profile-Analysis.sas, lines 21–160 (profile analysis and unstructured covariance).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/04-HW3-Trajectory-Analysis-Time.sas, lines 178–227 (parallelism contrasts and ML comparisons).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/8.0 - Multivariate_Analysis_1_Testing.pdf, pp. 9–16 and 22–30 (multivariate test statistics).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-022.pdf, pp. 4–23 (sample size/power for a continuous longitudinal contrast).",
+    "crumbs": [
+      "Core chapters",
+      "2. Repeated-measures ANOVA, MANOVA, and profile analysis"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html",
+    "href": "05-glm-review.html",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "",
+    "text": "GLMs specify the marginal mean–variance relationship for non-Gaussian responses and provide the mean-model component subsequently embedded in GEE or GLMM. A pooled GLM is a useful benchmark, but its model-based covariance is invalid for repeated observations unless independence is justified or a cluster-robust correction is used.",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#aim",
+    "href": "05-glm-review.html#aim",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "",
+    "text": "GLMs specify the marginal mean–variance relationship for non-Gaussian responses and provide the mean-model component subsequently embedded in GEE or GLMM. A pooled GLM is a useful benchmark, but its model-based covariance is invalid for repeated observations unless independence is justified or a cluster-robust correction is used.",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#model-specification",
+    "href": "05-glm-review.html#model-specification",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nFor an exponential-family response, \\[\nf(y;\\theta,\\phi)=\\exp\\left\\{\\frac{y\\theta-b(\\theta)}{a(\\phi)}+c(y,\\phi)\\right\\},\n\\quad E(Y)=b'(\\theta),\\quad \\operatorname{Var}(Y)=a(\\phi)b''(\\theta),\n\\] and a GLM sets \\(g(\\mu_{ij})=x_{ij}^{\\mathsf T}\\beta+\\log(e_{ij})\\), where \\(e_{ij}\\) is exposure for a log-link rate model. Common longitudinal outcomes use binomial-logit, Poisson-log, negative-binomial-log, or Gaussian-identity specifications.",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#r-packagesfunctions",
+    "href": "05-glm-review.html#r-packagesfunctions",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nstats::glm() fits standard GLMs; MASS::glm.nb() handles negative-binomial counts; anova(..., test = \"LRT\") compares nested likelihood models; broom::tidy() extracts estimates, exponentiated effects, and confidence intervals.",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#data",
+    "href": "05-glm-review.html#data",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "4. Data",
+    "text": "4. Data\nMASS::epil has repeated two-week seizure counts (y) for each subject, treatment, baseline seizure rate, age, and follow-up period.\n\ndata(\"epil\", package = \"MASS\")\nepil &lt;- MASS::epil |&gt;\n  mutate(subject = factor(subject), period_c = period - 1, exposure = 2)\ndplyr::glimpse(epil)\n\nRows: 236\nColumns: 11\n$ y        &lt;dbl&gt; 5, 3, 3, 3, 3, 5, 3, 3, 2, 4, 0, 5, 4, 4, 1, 4, 7, 18, 9, 21, 5, 2, 8, 7, 6, 4, 0…\n$ trt      &lt;fct&gt; placebo, placebo, placebo, placebo, placebo, placebo, placebo, placebo, placebo, …\n$ base     &lt;int&gt; 11, 11, 11, 11, 11, 11, 11, 11, 6, 6, 6, 6, 8, 8, 8, 8, 66, 66, 66, 66, 27, 27, 2…\n$ age      &lt;int&gt; 31, 31, 31, 31, 30, 30, 30, 30, 25, 25, 25, 25, 36, 36, 36, 36, 22, 22, 22, 22, 2…\n$ V4       &lt;int&gt; 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, …\n$ subject  &lt;fct&gt; 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, …\n$ period   &lt;int&gt; 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, …\n$ lbase    &lt;dbl&gt; -0.75635379, -0.75635379, -0.75635379, -0.75635379, -0.75635379, -0.75635379, -0.…\n$ lage     &lt;dbl&gt; 0.11420370, 0.11420370, 0.11420370, 0.11420370, 0.08141387, 0.08141387, 0.0814138…\n$ period_c &lt;dbl&gt; 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, …\n$ exposure &lt;dbl&gt; 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#fit",
+    "href": "05-glm-review.html#fit",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "5. Fit",
+    "text": "5. Fit\n\npois_main &lt;- glm(\n  y ~ trt + period_c + lbase + lage + offset(log(exposure)),\n  family = poisson(link = \"log\"), data = epil\n)\npois_interaction &lt;- update(pois_main, . ~ . + trt:period_c)\n\nsummary(pois_interaction)\n\n\nCall:\nglm(formula = y ~ trt + period_c + lbase + lage + trt:period_c + \n    offset(log(exposure)), family = poisson(link = \"log\"), data = epil)\n\nCoefficients:\n              Estimate Std. Error z value Pr(&gt;|z|)    \n(Intercept)    1.09320    0.04253  25.704  &lt; 2e-16 ***\ntrt1          -0.01366    0.03767  -0.363  0.71685    \nperiod_c      -0.05854    0.02029  -2.886  0.00391 ** \nlbase          1.22522    0.03252  37.672  &lt; 2e-16 ***\nlage           0.58778    0.10992   5.347 8.93e-08 ***\ntrt1:period_c  0.01574    0.02029   0.776  0.43792    \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n(Dispersion parameter for poisson family taken to be 1)\n\n    Null deviance: 2521.75  on 235  degrees of freedom\nResidual deviance:  946.42  on 230  degrees of freedom\nAIC: 1724.4\n\nNumber of Fisher Scoring iterations: 5\n\nanova(pois_main, pois_interaction, test = \"LRT\")\n\n\n  \n\n\nAIC(pois_main, pois_interaction)\n\n\n  \n\n\ndispersion_ratio &lt;- sum(residuals(pois_interaction, type = \"pearson\")^2) /\n  df.residual(pois_interaction)\ndispersion_ratio\n\n[1] 4.793496\n\nquasi_fit &lt;- update(pois_interaction, family = quasipoisson(link = \"log\"))\nnb_fit &lt;- MASS::glm.nb(\n  y ~ trt * period_c + lbase + lage + offset(log(exposure)), data = epil\n)\nsummary(quasi_fit)\n\n\nCall:\nglm(formula = y ~ trt + period_c + lbase + lage + trt:period_c + \n    offset(log(exposure)), family = quasipoisson(link = \"log\"), \n    data = epil)\n\nCoefficients:\n              Estimate Std. Error t value Pr(&gt;|t|)    \n(Intercept)    1.09320    0.09311  11.740   &lt;2e-16 ***\ntrt1          -0.01366    0.08247  -0.166   0.8686    \nperiod_c      -0.05854    0.04442  -1.318   0.1888    \nlbase          1.22522    0.07121  17.207   &lt;2e-16 ***\nlage           0.58778    0.24067   2.442   0.0153 *  \ntrt1:period_c  0.01574    0.04442   0.354   0.7234    \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n(Dispersion parameter for quasipoisson family taken to be 4.793499)\n\n    Null deviance: 2521.75  on 235  degrees of freedom\nResidual deviance:  946.42  on 230  degrees of freedom\nAIC: NA\n\nNumber of Fisher Scoring iterations: 5\n\nsummary(nb_fit)\n\n\nCall:\nMASS::glm.nb(formula = y ~ trt * period_c + lbase + lage + offset(log(exposure)), \n    data = epil, init.theta = 2.619099142, link = log)\n\nCoefficients:\n                Estimate Std. Error z value Pr(&gt;|z|)    \n(Intercept)    1.1510511  0.0825046  13.951   &lt;2e-16 ***\ntrt1           0.1161230  0.0821533   1.413    0.158    \nperiod_c      -0.0559396  0.0441196  -1.268    0.205    \nlbase          1.0608821  0.0685716  15.471   &lt;2e-16 ***\nlage           0.3693655  0.2270037   1.627    0.104    \ntrt1:period_c  0.0002283  0.0441179   0.005    0.996    \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n(Dispersion parameter for Negative Binomial(2.6191) family taken to be 1)\n\n    Null deviance: 585.77  on 235  degrees of freedom\nResidual deviance: 266.02  on 230  degrees of freedom\nAIC: 1315.9\n\nNumber of Fisher Scoring iterations: 1\n\n              Theta:  2.619 \n          Std. Err.:  0.362 \n\n 2 x log-likelihood:  -1301.921 \n\n\n\nOrdinal response extension\n\nepil_ordinal &lt;- epil |&gt;\n  mutate(severity = ordered(cut(y, breaks = c(-Inf, 0, 4, Inf),\n                                labels = c(\"none\", \"moderate\", \"high\"))))\n\nif (requireNamespace(\"ordinal\", quietly = TRUE)) {\n  ordinal_glmm &lt;- ordinal::clmm(\n    severity ~ trt + period_c + lbase + (1 | subject),\n    data = epil_ordinal, link = \"logit\", Hess = TRUE\n  )\n  summary(ordinal_glmm)\n}\n\nCumulative Link Mixed Model fitted with the Laplace approximation\n\nformula: severity ~ trt + period_c + lbase + (1 | subject)\ndata:    epil_ordinal\n\n link  threshold nobs logLik  AIC    niter     max.grad cond.H \n logit flexible  236  -162.24 336.49 270(1009) 5.17e-06 3.9e+01\n\nRandom effects:\n Groups  Name        Variance Std.Dev.\n subject (Intercept) 1.419    1.191   \nNumber of groups:  subject 59 \n\nCoefficients:\n         Estimate Std. Error z value Pr(&gt;|z|)    \ntrt1       0.5393     0.2362   2.283   0.0224 *  \nperiod_c  -0.1270     0.1395  -0.911   0.3625    \nlbase      2.7384     0.4252   6.440  1.2e-10 ***\n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nThreshold coefficients:\n              Estimate Std. Error z value\nnone|moderate  -4.0036     0.4855  -8.247\nmoderate|high  -0.3321     0.3313  -1.002",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#extract-interpret",
+    "href": "05-glm-review.html#extract-interpret",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\n\nbroom::tidy(pois_interaction, conf.int = TRUE, exponentiate = TRUE)\n\n\n  \n\n\nbroom::tidy(nb_fit, conf.int = TRUE, exponentiate = TRUE)\n\n\n  \n\n\nif (requireNamespace(\"emmeans\", quietly = TRUE)) {\n  emmeans::emtrends(nb_fit, ~trt, var = \"period_c\", type = \"response\")\n}\n\n trt       period_c.trend     SE  df asymp.LCL asymp.UCL\n placebo          -0.0557 0.0634 Inf    -0.180    0.0685\n progabide        -0.0562 0.0614 Inf    -0.177    0.0642\n\nConfidence level used: 0.95 \n\n\nExponentiated log-link coefficients are conditional rate ratios under the fitted mean model; the offset converts expected counts to rates per exposure unit. An interaction coefficient is a ratio of rate ratios, so constituent main effects are evaluated at period_c = 0. The quasi-Poisson fit rescales covariance without defining a full likelihood; the negative-binomial model changes the variance function and supports likelihood-based AIC/LRT.",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#diagnostics",
+    "href": "05-glm-review.html#diagnostics",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\nglm_diag &lt;- data.frame(\n  fitted = fitted(pois_interaction),\n  pearson = residuals(pois_interaction, type = \"pearson\"),\n  deviance = residuals(pois_interaction, type = \"deviance\"),\n  cook = cooks.distance(pois_interaction),\n  subject = epil$subject\n)\n\nggplot(glm_diag, aes(fitted, pearson)) + geom_point() + geom_hline(yintercept = 0, lty = 2)\n\n\n\n\n\n\n\nhead(glm_diag[order(glm_diag$cook, decreasing = TRUE), ], 8)\n\n\n  \n\n\nc(\n  Pearson_dispersion = sum(glm_diag$pearson^2) / df.residual(pois_interaction),\n  deviance_dispersion = deviance(pois_interaction) / df.residual(pois_interaction)\n)\n\n Pearson_dispersion deviance_dispersion \n           4.793496            4.114856 \n\n\nAssess link/mean misspecification, residual dispersion, influential observations/clusters, separation for binary models, and whether an exposure offset is correctly measured.",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#caveats",
+    "href": "05-glm-review.html#caveats",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nThese fits ignore repeated-subject correlation; use GEE for population-average inference or GLMM for a conditional random-effects model.\nPearson/deviance dispersion ratios are screens, not formal universal tests, and repeated dependence itself inflates them.\nQuasi-likelihood models have no ordinary likelihood; do not compare their AIC with likelihood fits.\nExponentiation is link-specific: odds ratios for logit, rate ratios for log, and no ratio interpretation for identity.\nWald inference may be unreliable with sparse outcomes, boundary estimates, or separation; use likelihood or penalized methods as appropriate.\nProportional-odds coefficients assume common covariate effects across cumulative logits; assess this constraint before reporting a single ordinal odds ratio. Nominal multinomial models require a separate set of logits and a dependence strategy.\nSource-backed: family/link, likelihood, offsets, Wald/LRT, interactions, and overdispersion are in the notes. Standard-practice addition: MASS::glm.nb() is the idiomatic R extension for overdispersed counts.",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "05-glm-review.html#source-references",
+    "href": "05-glm-review.html#source-references",
+    "title": "5. GLM review for longitudinal outcomes",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-013.pdf, pp. 4–21, 26–37, and 60–68 (GLM families, links, inference, fit assessment).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.0 - GLM_Review.pdf, pp. 1–15 and 19–24 (exponential family, IRLS/inference, overdispersion).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/supplements/GEE_notes.pdf, pp. 1–5 (quasi-likelihood and overdispersion).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Kaicheng/Assignment3/GLM-fitting and inference.r, lines 1–169 (R mean model, robust/model-based extraction, joint Wald tests).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-017.pdf, pp. 2–26 (ordinal, multinomial, and mixed response types).",
+    "crumbs": [
+      "Core chapters",
+      "5. GLM review for longitudinal outcomes"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html",
+    "href": "A2-interpretation-cheatsheet.html",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "",
+    "text": "This appendix maps common output quantities to their estimands and valid one-sentence interpretations. Interpretations are conditional on coding, link, time origin, interaction structure, covariance estimator, and missing-data assumptions.",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#aim",
+    "href": "A2-interpretation-cheatsheet.html#aim",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "",
+    "text": "This appendix maps common output quantities to their estimands and valid one-sentence interpretations. Interpretations are conditional on coding, link, time origin, interaction structure, covariance estimator, and missing-data assumptions.",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#model-specification",
+    "href": "A2-interpretation-cheatsheet.html#model-specification",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "2. Model specification",
+    "text": "2. Model specification\n\\[\n\\text{GEE: }g\\{E(Y_{ij})\\}=x_{ij}^{\\mathsf T}\\beta_{PA},\n\\qquad\n\\text{GLMM: }g\\{E(Y_{ij}\\mid b_i)\\}=x_{ij}^{\\mathsf T}\\beta_{SS}+z_{ij}^{\\mathsf T}b_i.\n\\] For Gaussian LMMs, identity-link marginalization leaves \\(\\beta\\) unchanged. For logistic random-intercept models, \\(\\beta_{PA}\\approx\\beta_{SS}/\\sqrt{1+0.35\\sigma_b^2}\\).",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#r-packagesfunctions",
+    "href": "A2-interpretation-cheatsheet.html#r-packagesfunctions",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nUse summary() for the complete fitted object; broom.mixed::tidy() for fixed/random parameters; emmeans for estimable means/trends/interaction contrasts; marginaleffects for response-scale standardization; VarCorr()/ranef() for variance components and BLUPs.",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#data",
+    "href": "A2-interpretation-cheatsheet.html#data",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "4. Data",
+    "text": "4. Data\nMASS::epil is converted to a binary repeated outcome for a direct population-average versus subject-specific comparison.\n\ndata(\"epil\", package = \"MASS\")\nepil &lt;- MASS::epil |&gt;\n  mutate(subject = factor(subject), period_c = period - 1, any_seizure = as.integer(y &gt; 0)) |&gt;\n  arrange(subject, period)",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#fit",
+    "href": "A2-interpretation-cheatsheet.html#fit",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "5. Fit",
+    "text": "5. Fit\n\nif (requireNamespace(\"geepack\", quietly = TRUE)) {\n  gee_bin &lt;- geepack::geeglm(\n    any_seizure ~ trt * period_c + lbase + lage,\n    id = subject, waves = period, data = epil,\n    family = binomial, corstr = \"exchangeable\"\n  )\n}\n\nglmm_bin &lt;- glmer(\n  any_seizure ~ trt * period_c + lbase + lage + (1 | subject),\n  epil, family = binomial, nAGQ = 7\n)",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#extract-interpret",
+    "href": "A2-interpretation-cheatsheet.html#extract-interpret",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\n\nif (exists(\"gee_bin\")) {\n  cbind(estimate = coef(gee_bin), robust_se = sqrt(diag(gee_bin$geese$vbeta)))\n}\n\n                  estimate robust_se\n(Intercept)    2.857200001 0.5323306\ntrt1          -0.006401342 0.4915960\nperiod_c      -0.216120640 0.1781604\nlbase          1.015591688 0.4089916\nlage           0.333749983 1.2980949\ntrt1:period_c  0.216120640 0.1767216\n\nexp(fixef(glmm_bin))\n\n  (Intercept)          trt1      period_c         lbase          lage trt1:period_c \n   60.6787725     0.8911422     0.7381577     4.4260237     2.5779885     1.3547221 \n\nas.data.frame(VarCorr(glmm_bin))\n\n\n  \n\n\nif (requireNamespace(\"emmeans\", quietly = TRUE)) {\n  ss_trends &lt;- emmeans::emtrends(glmm_bin, ~trt, var = \"period_c\", type = \"response\")\n  ss_trends\n  pairs(ss_trends, adjust = \"holm\")\n}\n\n contrast            estimate    SE  df z.ratio p.value\n placebo - progabide    0.607 0.495 Inf   1.226  0.2201\n\nif (requireNamespace(\"marginaleffects\", quietly = TRUE)) {\n  marginaleffects::avg_comparisons(glmm_bin, variables = \"trt\", type = \"response\")\n}\n\n\n Estimate Std. Error  z Pr(&gt;|z|)   S  2.5 % 97.5 %\n  -0.0466     0.0466 -1    0.317 1.7 -0.138 0.0447\n\nTerm: trt\nType: response\nComparison: progabide - placebo\n\n\n\n\n\n\n\n\n\nQuantity\nConcise interpretation\n\n\n\n\nLMM fixed intercept\nExpected response for the reference covariate pattern at the time origin; recenter time if this is extrapolative.\n\n\nLMM fixed slope\nExpected response change per time unit for the reference group; with an interaction it is not the common slope.\n\n\nGroup x time\nDifference in time slopes (continuous time) or difference of occasion contrasts (factor time).\n\n\nRandom-intercept variance\nResidual between-subject heterogeneity in the conditional intercept.\n\n\nRandom-slope variance\nResidual between-subject heterogeneity in conditional change; marginal variance/correlation then depends on time.\n\n\nRandom-effect correlation\nAssociation between latent deviations; inspect time centering because it changes the intercept and its correlation with slope.\n\n\nBLUP/conditional mode\nShrunken subject deviation conditional on the fitted population model and variance parameters.\n\n\nRandom-intercept ICC\n\\(\\tau_0^2/(\\tau_0^2+\\sigma^2)\\) for the Gaussian random-intercept model only.\n\n\nGEE coefficient\nPopulation-average change in the link of the marginal mean.\n\n\nGEE working \\(\\alpha\\)\nNuisance association parameter used for efficiency; not generally a target unless association is explicitly modeled.\n\n\nGEE robust SE\nSandwich uncertainty, asymptotically robust to working-correlation misspecification.\n\n\nGEE model-based SE\nValid only if the working covariance is correctly specified.\n\n\nGEE scale \\(\\phi\\)\nMarginal variance multiplier under the package’s scale-estimation rule.\n\n\nLogistic GLMM \\(e^{\\beta}\\)\nSubject-specific conditional odds ratio at equal random effects.\n\n\nLogistic GEE \\(e^{\\beta}\\)\nPopulation-average marginal odds ratio.\n\n\nPoisson/log GLMM \\(e^{\\beta}\\)\nConditional rate ratio; an offset fixes the exposure denominator.\n\n\nSatterthwaite/KR df\nApproximate denominator df for a specified fixed-effect test; KR also adjusts covariance/test statistic.",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#diagnostics",
+    "href": "A2-interpretation-cheatsheet.html#diagnostics",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\nBefore interpreting, verify reference levels, time units/origin, contrast matrix, link/response scale, robust versus model-based covariance, convergence/singularity, dispersion, missing-data assumption, and whether predictions are conditional (re.form = NULL), random-effects-zero (re.form = NA), or marginalized/standardized.\n\ncontrasts(epil$trt)\n\n          [,1]\nplacebo      1\nprogabide   -1\n\nisSingular(glmm_bin)\n\n[1] FALSE\n\nglmm_bin@optinfo$conv$lme4$messages\n\nNULL",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#caveats",
+    "href": "A2-interpretation-cheatsheet.html#caveats",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nA main effect involved in an interaction is evaluated at the reference/zero value of the interacting variable.\nre.form = NA in a nonlinear mixed model sets \\(b=0\\); it does not integrate over \\(b\\). Use marginal standardization or numerical integration for population-average predictions.\nOdds ratios are noncollapsible; PA/SS differences can occur without confounding and are not explained solely by bias.\nemmeans averages over the reference grid according to its weighting rule; state whether weights are equal, proportional, or standardized to a target population.\nReport effect, scale, unit, contrast, uncertainty method, and multiplicity adjustment in the same sentence.\nSource-backed: interpretation distinctions and attenuation follow BIOS 767/STAT 571. Standard-practice addition: marginaleffects gives explicit response-scale standardization.",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A2-interpretation-cheatsheet.html#source-references",
+    "href": "A2-interpretation-cheatsheet.html#source-references",
+    "title": "A2. Interpretation cheatsheet",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/3.0 - Model Families.pdf, pp. 2–5 (conditional and marginal model families).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf, pp. 5–13 and 15–22 (PA/SS relationship and interpretation).\n/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf, pp. 80–85 (generalized mixed-model coefficient interpretation and attenuation).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-010.pdf, pp. 40–58 and 62–71 (fixed effects, random effects, BLUPs, ICC).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf, pp. 39–52 and 62–68 (marginal GEE interpretation and covariance estimators).",
+    "crumbs": [
+      "Reference",
+      "A2. Interpretation cheatsheet"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html",
+    "href": "A3-packages.html",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "",
+    "text": "This appendix maps common longitudinal-data tasks to idiomatic R packages. Package choice is driven by the estimand, response distribution, dependence model, and inferential target; no single package covers all combinations.",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#aim",
+    "href": "A3-packages.html#aim",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "",
+    "text": "This appendix maps common longitudinal-data tasks to idiomatic R packages. Package choice is driven by the estimand, response distribution, dependence model, and inferential target; no single package covers all combinations.",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#model-specification",
+    "href": "A3-packages.html#model-specification",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nThe package groups cover conditional mixed models \\[\ng\\{E(Y_{ij}\\mid b_i)\\}=x_{ij}^{\\mathsf T}\\beta+z_{ij}^{\\mathsf T}b_i,\n\\qquad b_i\\sim N(0,D),\n\\] and marginal models \\[\ng\\{E(Y_{ij})\\}=x_{ij}^{\\mathsf T}\\beta,\n\\qquad \\operatorname{Var}(Y_i)=A_i^{1/2}R_i(\\alpha)A_i^{1/2}.\n\\]",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#r-packagesfunctions",
+    "href": "A3-packages.html#r-packagesfunctions",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\n\nData manipulation and visualization\n\ndplyr — long-format grouping, summaries, joins, and creation of subject/time variables.\ntidyr — wide-to-long reshaping with pivot_longer() and balanced-grid construction with complete().\nggplot2 — individual profiles, mean-profile plots, residual displays, and diagnostic graphics.\nnaniar — missingness summaries and pattern visualizations such as vis_miss() and gg_miss_upset().\n\n\n\nGaussian repeated measures and linear mixed models\n\nnlme — gls()/lme() models with explicit residual covariance structures, including CS, AR(1), continuous-time AR(1), spatial correlation, and unstructured correlation.\nlme4 — sparse, modular fitting of linear and generalized linear mixed models via lmer() and glmer().\nlmerTest — Satterthwaite or Kenward–Roger denominator-df tests for lmer() fixed effects.\npbkrtest — Kenward–Roger and parametric-bootstrap comparisons for nested Gaussian mixed models.\n\n\n\nMarginal models and GEE\n\ngeepack — geeglm() GEE fitting, robust/model-based covariance extraction, common working correlations, and QIC via QIC().\ngee — alternative GEE implementation whose summary exposes naive and robust standard errors and scale estimation directly.\n\n\n\nGeneralized linear mixed models\n\nlme4 — Laplace or adaptive Gauss–Hermite fitting of standard-family GLMMs through glmer(..., nAGQ=).\nglmmTMB — flexible GLMMs with offsets, zero inflation, dispersion models, and families such as negative binomial and beta-binomial.\n\n\n\nMissing data and weighting\n\nmice — multiple imputation by chained equations, passive transformations, multilevel imputation methods, and Rubin pooling.\nmitools — manipulation and pooling of multiply imputed analyses when model-specific mice::pool() support is unavailable.\nWeightIt — construction and diagnostics of inverse-probability weights; longitudinal dropout weights usually require explicit visit-specific models.\nsurvey — weighted estimating-equation analyses with design-aware sandwich variance estimation.\n\n\n\nContrasts, predictions, and inference\n\nemmeans — estimated marginal means, estimable functions, interaction contrasts, trends, and multiplicity adjustments.\nmarginaleffects — response-scale predictions, contrasts, slopes, and marginal standardization across model classes.\nmultcomp — simultaneous general linear hypotheses and multiplicity-adjusted confidence intervals/tests.\n\n\n\nDiagnostics and influence\n\nperformance — standardized checks for singularity, convergence, collinearity, residual behavior, and overdispersion.\nsee — plotting backend used by performance::check_model() diagnostic panels.\nDHARMa — simulation-based residual diagnostics for GLMMs, including dispersion and zero-inflation tests.\ninfluence.ME — cluster-deletion influence measures and Cook’s distances for lme4 mixed models.\nclubSandwich — cluster-robust covariance estimators and small-sample corrections for supported fitted-model classes.\n\n\n\nTidying and reproducible output\n\nbroom — tidy coefficient, fitted-value, and residual output for GLMs and many marginal models.\nbroom.mixed — tidy fixed effects, random effects, variance components, and confidence intervals from mixed models.\nmodelsummary — compact, reproducible comparison tables across supported model classes.",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#data",
+    "href": "A3-packages.html#data",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "4. Data",
+    "text": "4. Data\nnlme::Orthodont contains repeated orthodontic distance measurements in long format: one row per subject-age occasion, with subject (Subject), time (age), sex, and continuous response (distance).\n\ndata(\"Orthodont\", package = \"nlme\")\nstr(nlme::Orthodont)\n\nClasses 'nfnGroupedData', 'nfGroupedData', 'groupedData' and 'data.frame':  108 obs. of  4 variables:\n $ distance: num  26 25 29 31 21.5 22.5 23 26.5 23 22.5 ...\n $ age     : num  8 10 12 14 8 10 12 14 8 10 ...\n $ Subject : Ord.factor w/ 27 levels \"M16\"&lt;\"M05\"&lt;\"M02\"&lt;..: 15 15 15 15 3 3 3 3 7 7 ...\n $ Sex     : Factor w/ 2 levels \"Male\",\"Female\": 1 1 1 1 1 1 1 1 1 1 ...\n - attr(*, \"outer\")=Class 'formula'  language ~Sex\n  .. ..- attr(*, \".Environment\")=&lt;environment: R_GlobalEnv&gt; \n - attr(*, \"formula\")=Class 'formula'  language distance ~ age | Subject\n  .. ..- attr(*, \".Environment\")=&lt;environment: R_GlobalEnv&gt; \n - attr(*, \"labels\")=List of 2\n  ..$ x: chr \"Age\"\n  ..$ y: chr \"Distance from pituitary to pterygomaxillary fissure\"\n - attr(*, \"units\")=List of 2\n  ..$ x: chr \"(yr)\"\n  ..$ y: chr \"(mm)\"\n - attr(*, \"FUN\")=function (x)  \n  ..- attr(*, \"source\")= chr \"function (x) max(x, na.rm = TRUE)\"\n - attr(*, \"order.groups\")= logi TRUE",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#fit",
+    "href": "A3-packages.html#fit",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "5. Fit",
+    "text": "5. Fit\nThe following audit is intentionally non-failing: it identifies which manual dependencies are available before rendering the analysis chapters.\n\nmanual_packages &lt;- c(\n  \"dplyr\", \"tidyr\", \"ggplot2\", \"naniar\",\n  \"nlme\", \"lme4\", \"lmerTest\", \"pbkrtest\",\n  \"geepack\", \"gee\", \"glmmTMB\", \"mice\", \"mitools\", \"WeightIt\", \"survey\",\n  \"emmeans\", \"marginaleffects\", \"multcomp\",\n  \"performance\", \"see\", \"DHARMa\", \"influence.ME\", \"clubSandwich\",\n  \"broom\", \"broom.mixed\", \"modelsummary\"\n)\n\npackage_audit &lt;- data.frame(\n  package = manual_packages,\n  installed = vapply(manual_packages, requireNamespace, logical(1), quietly = TRUE)\n)\npackage_audit\n\n\n  \n\n\n# Install once if needed:\n# install.packages(package_audit$package[!package_audit$installed])",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#extract-interpret",
+    "href": "A3-packages.html#extract-interpret",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\n\ntransform(\n  subset(package_audit, installed),\n  version = vapply(package, function(p) as.character(utils::packageVersion(p)), character(1))\n)\n\n\n  \n\n\n\nPackage versions are part of the computational specification because supported covariance structures, inferential defaults, and tidiers can change between releases.",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#diagnostics",
+    "href": "A3-packages.html#diagnostics",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\nstopifnot(\n  getRversion() &gt;= \"4.2.0\",\n  requireNamespace(\"nlme\", quietly = TRUE)\n)\n\nBefore an exam or reproducible render, run the package audit and record sessionInfo(); diagnose discrepancies against the fitted model’s package version rather than assuming cross-package defaults agree.",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#caveats",
+    "href": "A3-packages.html#caveats",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nlme4::lmer() deliberately omits denominator-df p-values; use lmerTest or pbkrtest when finite-sample fixed-effect tests are required.\nnlme residual covariance structures and lme4 random-effects structures are not interchangeable parameterizations of every marginal covariance model.\nGEE packages differ in scale estimation, finite-sample corrections, and the labels used for robust versus model-based covariance estimates.\nSAS PROC MIXED/PROC GLIMMIX defaults are procedure- and option-dependent; reproduce the intended likelihood, denominator-df method, covariance parameterization, and quadrature explicitly in R.\nStandard-practice addition: packages not used in the course code are included only when they supply a current, idiomatic R implementation of a method covered in the notes.",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "A3-packages.html#source-references",
+    "href": "A3-packages.html#source-references",
+    "title": "A3. R packages for longitudinal data analysis",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf, pp. 42–90 (mixed models, GEE/GLMM, interpretation, diagnostics).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-010.pdf, pp. 5–73 (PROC MIXED functionality mapped to nlme/lme4).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf, pp. 39–80 (GEE); /Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-015.pdf, pp. 5–61 (GLMM).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.0 - LMM_1.pdf through /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.4 - LMM_Review.pdf (LMM).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.1 - GEE_1.pdf through /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.6 - GEE_6-Review.pdf (GEE).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.0 - GLMM_1.pdf through /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.4 - GLMM - Review.pdf (GLMM).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf through /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.4 - Missing_data - Recap.pdf (missing data).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/ and /Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/ — R package use in the audited .R/.Rmd files; SAS inference and covariance options are reproduced with native R in the topic chapters.",
+    "crumbs": [
+      "Reference",
+      "A3. R packages for longitudinal data analysis"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Each chapter is self-contained and sources _common.R. Render the project from this directory so relative paths and the shared setup resolve correctly.\n\n\n\nIndividual spaghetti plots for heterogeneity, outliers, nonlinear trajectories, and irregular observation times.\nGroup-specific mean profiles with pointwise standard-error bands.\nOccasion-specific sample covariance and correlation matrices.\nEmpirical variograms for assessing dependence as a function of time lag.\nVisit- and subject-level missing-data pattern displays.\n\n\n\n\n\nUnivariate repeated-measures ANOVA and the sphericity assumption.\nGreenhouse–Geisser and Huynh–Feldt corrections.\nMultivariate repeated-measures tests using Pillai, Wilks, Hotelling–Lawley, and Roy statistics.\nProfile-analysis tests of parallelism, coincidence, and flatness.\nemmeans interaction contrasts, joint tests, multiplicity adjustment, and repeated-measures power calculations.\n\n\n\n\n\nMarginal Gaussian models with CS, AR(1), continuous-time AR(1), spatial, Toeplitz, and unstructured covariance.\nCovariance and mean-model comparison using likelihood-ratio tests, AIC, and BIC.\nML versus REML for fixed-effect comparison and variance-component estimation.\nRandom-intercept and random-slope models, BLUP extraction, variance components, and ICCs.\nProfile-likelihood confidence intervals and Kenward–Roger or Satterthwaite small-sample inference.\nBoundary-aware variance-component tests and singular-fit or convergence troubleshooting.\nNested, crossed, and nonlinear mixed-effects models.\n\n\n\n\n\nPopulation-averaged mean models defined through generalized estimating equations.\nIndependence, exchangeable, AR(1), and unstructured working correlations.\nWorking-correlation comparison with QIC.\nSandwich versus model-based standard errors and GEE scale estimation.\nWithin-subject and between-subject decomposition of time-varying covariates.\nPopulation-averaged GEE versus subject-specific GLMM interpretation and attenuation under nonlinear links.\n\n\n\n\n\nExponential-family distributions, mean–variance relationships, and link functions.\nLogistic, Poisson, negative-binomial, and Gaussian regression specifications.\nExposure offsets and rate-ratio interpretation.\nPearson and deviance diagnostics for overdispersion.\nCumulative-link models for ordinal longitudinal responses.\n\n\n\n\n\nSubject-specific generalized linear mixed models for binary and count responses.\nLaplace and adaptive Gauss–Hermite quadrature approximations to the marginal likelihood.\nConditional odds ratios or rate ratios and their relationship to population-averaged effects.\nOverdispersion and zero-inflation diagnostics.\nglmmTMB models for negative-binomial, zero-inflated, and offset-based analyses.\nTransition models conditional on lagged response history.\n\n\n\n\n\nMCAR, MAR, and MNAR observation mechanisms and their inferential implications.\nLimitations of complete-case analysis and last observation carried forward.\nEM estimation and longitudinal multiple imputation with Rubin-rule pooling.\nDropout-probability models, inverse-probability weighting, and weighted GEE.\nSelection and pattern-mixture formulations for MNAR sensitivity analysis.\n\n\n\n\n\nHotelling and MANOVA tests for correlated multivariate response vectors.\nPCA based on covariance or correlation matrices, including loadings, scores, and explained variance.\nFactor-analysis covariance models and their distinction from PCA.\nPrincipal-coordinate analysis and multidimensional scaling based on pairwise distances.\n\n\n\n\n\nML/REML model-comparison rules, information criteria, and boundary-aware likelihood-ratio testing.\nMarginal, conditional, Pearson, and deviance residuals.\nResidual-versus-fitted plots and normal Q–Q plots for residuals and BLUPs.\nSubject-level influence and Cook’s-distance diagnostics.\nResidual variograms, overdispersion checks, singular-fit detection, and convergence assessment.\n\n\n\n\n\nPopulation-averaged, subject-specific, and transition-model estimands.\nGEE–GLMM attenuation relationships under logit, probit, and identity links.\nInterpretation of fixed effects, variance components, ICCs, working correlations, and scale parameters.\nInteraction effects, profile contrasts, estimable functions, and multiplicity-adjusted comparisons with emmeans.\nCommon interpretation traps involving nonlinear links, random effects, offsets, and prediction scales.\n\n\n\n\n\nVisualization and data-management packages for longitudinal data.\nPackages for repeated-measures ANOVA, LMMs, GEE, GLMMs, and nonlinear mixed models.\nPackages for missing-data analysis, contrasts, small-sample inference, and marginal effects.\nPackages for residual diagnostics, influence assessment, model summaries, and reproducible output.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#eda-descriptive.qmd",
+    "href": "index.html#eda-descriptive.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Individual spaghetti plots for heterogeneity, outliers, nonlinear trajectories, and irregular observation times.\nGroup-specific mean profiles with pointwise standard-error bands.\nOccasion-specific sample covariance and correlation matrices.\nEmpirical variograms for assessing dependence as a function of time lag.\nVisit- and subject-level missing-data pattern displays.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#rm-anova-manova.qmd",
+    "href": "index.html#rm-anova-manova.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Univariate repeated-measures ANOVA and the sphericity assumption.\nGreenhouse–Geisser and Huynh–Feldt corrections.\nMultivariate repeated-measures tests using Pillai, Wilks, Hotelling–Lawley, and Roy statistics.\nProfile-analysis tests of parallelism, coincidence, and flatness.\nemmeans interaction contrasts, joint tests, multiplicity adjustment, and repeated-measures power calculations.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#linear-mixed-models.qmd",
+    "href": "index.html#linear-mixed-models.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Marginal Gaussian models with CS, AR(1), continuous-time AR(1), spatial, Toeplitz, and unstructured covariance.\nCovariance and mean-model comparison using likelihood-ratio tests, AIC, and BIC.\nML versus REML for fixed-effect comparison and variance-component estimation.\nRandom-intercept and random-slope models, BLUP extraction, variance components, and ICCs.\nProfile-likelihood confidence intervals and Kenward–Roger or Satterthwaite small-sample inference.\nBoundary-aware variance-component tests and singular-fit or convergence troubleshooting.\nNested, crossed, and nonlinear mixed-effects models.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#marginal-models-gee.qmd",
+    "href": "index.html#marginal-models-gee.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Population-averaged mean models defined through generalized estimating equations.\nIndependence, exchangeable, AR(1), and unstructured working correlations.\nWorking-correlation comparison with QIC.\nSandwich versus model-based standard errors and GEE scale estimation.\nWithin-subject and between-subject decomposition of time-varying covariates.\nPopulation-averaged GEE versus subject-specific GLMM interpretation and attenuation under nonlinear links.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#glm-review.qmd",
+    "href": "index.html#glm-review.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Exponential-family distributions, mean–variance relationships, and link functions.\nLogistic, Poisson, negative-binomial, and Gaussian regression specifications.\nExposure offsets and rate-ratio interpretation.\nPearson and deviance diagnostics for overdispersion.\nCumulative-link models for ordinal longitudinal responses.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#glmm.qmd",
+    "href": "index.html#glmm.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Subject-specific generalized linear mixed models for binary and count responses.\nLaplace and adaptive Gauss–Hermite quadrature approximations to the marginal likelihood.\nConditional odds ratios or rate ratios and their relationship to population-averaged effects.\nOverdispersion and zero-inflation diagnostics.\nglmmTMB models for negative-binomial, zero-inflated, and offset-based analyses.\nTransition models conditional on lagged response history.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#missing-data.qmd",
+    "href": "index.html#missing-data.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "MCAR, MAR, and MNAR observation mechanisms and their inferential implications.\nLimitations of complete-case analysis and last observation carried forward.\nEM estimation and longitudinal multiple imputation with Rubin-rule pooling.\nDropout-probability models, inverse-probability weighting, and weighted GEE.\nSelection and pattern-mixture formulations for MNAR sensitivity analysis.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#multivariate-testing-pca.qmd",
+    "href": "index.html#multivariate-testing-pca.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Hotelling and MANOVA tests for correlated multivariate response vectors.\nPCA based on covariance or correlation matrices, including loadings, scores, and explained variance.\nFactor-analysis covariance models and their distinction from PCA.\nPrincipal-coordinate analysis and multidimensional scaling based on pairwise distances.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#a1-inference-diagnostics.qmd",
+    "href": "index.html#a1-inference-diagnostics.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "ML/REML model-comparison rules, information criteria, and boundary-aware likelihood-ratio testing.\nMarginal, conditional, Pearson, and deviance residuals.\nResidual-versus-fitted plots and normal Q–Q plots for residuals and BLUPs.\nSubject-level influence and Cook’s-distance diagnostics.\nResidual variograms, overdispersion checks, singular-fit detection, and convergence assessment.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#a2-interpretation-cheatsheet.qmd",
+    "href": "index.html#a2-interpretation-cheatsheet.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Population-averaged, subject-specific, and transition-model estimands.\nGEE–GLMM attenuation relationships under logit, probit, and identity links.\nInterpretation of fixed effects, variance components, ICCs, working correlations, and scale parameters.\nInteraction effects, profile contrasts, estimable functions, and multiplicity-adjusted comparisons with emmeans.\nCommon interpretation traps involving nonlinear links, random effects, offsets, and prediction scales.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "index.html#a3-packages.qmd",
+    "href": "index.html#a3-packages.qmd",
+    "title": "Longitudinal Data Analysis in R",
+    "section": "",
+    "text": "Visualization and data-management packages for longitudinal data.\nPackages for repeated-measures ANOVA, LMMs, GEE, GLMMs, and nonlinear mixed models.\nPackages for missing-data analysis, contrasts, small-sample inference, and marginal effects.\nPackages for residual diagnostics, influence assessment, model summaries, and reproducible output.",
+    "crumbs": [
+      "Topic catalogue"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html",
+    "href": "08-multivariate-testing-pca.html",
+    "title": "8. Multivariate testing and PCA",
+    "section": "",
+    "text": "Classical multivariate tests assess vector mean hypotheses while accounting for covariance among response components. PCA constructs orthogonal linear combinations maximizing sample variance and is used for dimension reduction or visualization; it does not use outcome/group labels and does not itself estimate a longitudinal mean model.",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#aim",
+    "href": "08-multivariate-testing-pca.html#aim",
+    "title": "8. Multivariate testing and PCA",
+    "section": "",
+    "text": "Classical multivariate tests assess vector mean hypotheses while accounting for covariance among response components. PCA constructs orthogonal linear combinations maximizing sample variance and is used for dimension reduction or visualization; it does not use outcome/group labels and does not itself estimate a longitudinal mean model.",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#model-specification",
+    "href": "08-multivariate-testing-pca.html#model-specification",
+    "title": "8. Multivariate testing and PCA",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nFor \\(p\\)-variate vectors \\(Y_i\\sim N_p(\\mu_g,\\Sigma)\\), MANOVA tests \\(H_0:C\\mu=0\\) using eigenvalues of \\(E^{-1}H\\) (Wilks, Pillai, Hotelling–Lawley, or Roy statistics). PCA diagonalizes the sample covariance/correlation matrix, \\[\nS=V\\Lambda V^{\\mathsf T},\\qquad Z_k=(Y-\\bar Y) v_k,qquad\n\\operatorname{Var}(Z_k)=\\lambda_k.\n\\]",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#r-packagesfunctions",
+    "href": "08-multivariate-testing-pca.html#r-packagesfunctions",
+    "title": "8. Multivariate testing and PCA",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nBase manova()/summary.mlm() compute multivariate tests; stats::prcomp() uses an SVD for stable PCA; factanal() fits a common-factor model; cmdscale() supplies classical metric MDS/PCoA.",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#data",
+    "href": "08-multivariate-testing-pca.html#data",
+    "title": "8. Multivariate testing and PCA",
+    "section": "4. Data",
+    "text": "4. Data\nnlme::Orthodont is reshaped to one row per subject and one response column per age, producing a four-dimensional longitudinal response vector.\n\ndata(\"Orthodont\", package = \"nlme\")\north_wide &lt;- as.data.frame(Orthodont) |&gt;\n  mutate(age = paste0(\"age\", age)) |&gt;\n  select(Subject, Sex, age, distance) |&gt;\n  pivot_wider(names_from = age, values_from = distance) |&gt;\n  arrange(Subject)\nY &lt;- as.matrix(orth_wide[paste0(\"age\", c(8, 10, 12, 14))])",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#fit",
+    "href": "08-multivariate-testing-pca.html#fit",
+    "title": "8. Multivariate testing and PCA",
+    "section": "5. Fit",
+    "text": "5. Fit\n\nmv_fit &lt;- manova(Y ~ Sex, data = orth_wide)\nsummary(mv_fit, test = \"Pillai\")\n\n          Df Pillai approx F num Df den Df  Pr(&gt;F)  \nSex        1 0.3977   3.6317      4     22 0.02034 *\nResiduals 25                                        \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nsummary(mv_fit, test = \"Wilks\")\n\n          Df  Wilks approx F num Df den Df  Pr(&gt;F)  \nSex        1 0.6023   3.6317      4     22 0.02034 *\nResiduals 25                                        \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nsummary(mv_fit, test = \"Hotelling-Lawley\")\n\n          Df Hotelling-Lawley approx F num Df den Df  Pr(&gt;F)  \nSex        1           0.6603   3.6317      4     22 0.02034 *\nResiduals 25                                                  \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nsummary.aov(mv_fit)                       # componentwise follow-up tests\n\n Response age8 :\n            Df  Sum Sq Mean Sq F value  Pr(&gt;F)  \nSex          1  18.688 18.6877  3.4508 0.07504 .\nResiduals   25 135.386  5.4155                  \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n Response age10 :\n            Df  Sum Sq Mean Sq F value  Pr(&gt;F)  \nSex          1  16.381 16.3807  3.9144 0.05899 .\nResiduals   25 104.619  4.1848                  \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n Response age12 :\n            Df  Sum Sq Mean Sq F value  Pr(&gt;F)  \nSex          1  45.014  45.014  6.9727 0.01406 *\nResiduals   25 161.393   6.456                  \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n Response age14 :\n            Df  Sum Sq Mean Sq F value   Pr(&gt;F)    \nSex          1  74.375  74.375  14.918 0.000705 ***\nResiduals   25 124.643   4.986                     \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\npca_cov &lt;- prcomp(Y, center = TRUE, scale. = FALSE)\npca_cor &lt;- prcomp(Y, center = TRUE, scale. = TRUE)\nsummary(pca_cov)\n\nImportance of components:\n                          PC1    PC2    PC3     PC4\nStandard deviation     4.5136 1.6495 1.4515 0.98629\nProportion of Variance 0.7784 0.1040 0.0805 0.03717\nCumulative Proportion  0.7784 0.8823 0.9628 1.00000\n\npca_cov$rotation\n\n            PC1        PC2         PC3        PC4\nage8  0.4417173 -0.7841470  0.28658880  0.3284297\nage10 0.3958890  0.2416250  0.68907271 -0.5568376\nage12 0.5762762 -0.1118055 -0.66499530 -0.4617212\nage14 0.5621952  0.5605625 -0.02875609  0.6073544\n\nscree &lt;- data.frame(\n  component = seq_along(pca_cov$sdev),\n  variance = pca_cov$sdev^2,\n  proportion = pca_cov$sdev^2 / sum(pca_cov$sdev^2)\n)\nggplot(scree, aes(component, proportion)) + geom_col() +\n  scale_x_continuous(breaks = scree$component)\n\n\n\n\n\n\n\nscores &lt;- data.frame(pca_cov$x, Sex = orth_wide$Sex)\nggplot(scores, aes(PC1, PC2, color = Sex)) + geom_point(size = 2)\n\n\n\n\n\n\n\n\n\n# Additional multivariate methods covered in STAT 571.\nfactor_fit &lt;- factanal(Y, factors = 1, rotation = \"none\")\nfactor_fit\n\n\nCall:\nfactanal(x = Y, factors = 1, rotation = \"none\")\n\nUniquenesses:\n age8 age10 age12 age14 \n0.456 0.359 0.238 0.185 \n\nLoadings:\n      Factor1\nage8  0.738  \nage10 0.801  \nage12 0.873  \nage14 0.903  \n\n               Factor1\nSS loadings      2.762\nProportion Var   0.691\n\nTest of the hypothesis that 1 factor is sufficient.\nThe chi square statistic is 4.83 on 2 degrees of freedom.\nThe p-value is 0.0895 \n\npc_dist &lt;- dist(scale(Y))\nmds &lt;- cmdscale(pc_dist, k = 2, eig = TRUE)\nhead(mds$points)\n\n           [,1]       [,2]\n[1,] -0.8299395 -0.4003786\n[2,] -0.7603456  0.8708950\n[3,] -0.5105576  0.2337541\n[4,] -0.2922557 -0.3830414\n[5,] -0.2532435 -0.1250432\n[6,] -0.1630799 -1.0060998",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#extract-interpret",
+    "href": "08-multivariate-testing-pca.html#extract-interpret",
+    "title": "8. Multivariate testing and PCA",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\nPillai/Wilks tests address the joint sex difference across the four-age response vector; univariate follow-ups require multiplicity control and do not replace the joint test. PCA loadings define each linear combination, scores locate subjects, and \\(\\lambda_k/\\sum\\lambda_j\\) is explained variance. Covariance PCA emphasizes occasions with larger variance; correlation PCA standardizes each occasion. Factor loadings represent a latent common-factor covariance model and are not PCA loadings. PCoA/MDS preserves pairwise distances rather than maximizing variance directly.",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#diagnostics",
+    "href": "08-multivariate-testing-pca.html#diagnostics",
+    "title": "8. Multivariate testing and PCA",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\nstopifnot(!anyNA(Y), nrow(Y) &gt; ncol(Y))\neigen(cov(Y), symmetric = TRUE)$values\n\n[1] 20.3726150  2.7207655  2.1069361  0.9727603\n\nreconstruction_2pc &lt;- sweep(\n  pca_cov$x[, 1:2, drop = FALSE] %*% t(pca_cov$rotation[, 1:2, drop = FALSE]),\n  2, pca_cov$center, \"+\"\n)\nsqrt(mean((Y - reconstruction_2pc)^2))\n\n[1] 0.8610508\n\nqqnorm(pca_cov$x[, 1]); qqline(pca_cov$x[, 1])\n\n\n\n\n\n\n\n\nFor MANOVA, examine multivariate outliers, covariance heterogeneity, rank, and complete-case support. For PCA, assess scaling, dominance by outliers, scree stability, loading sign arbitrariness, and reconstruction error.",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#caveats",
+    "href": "08-multivariate-testing-pca.html#caveats",
+    "title": "8. Multivariate testing and PCA",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nMultivariate normality and common covariance are finite-sample assumptions for classical MANOVA; Pillai is often comparatively robust but not assumption-free.\nA significant MANOVA does not identify which occasion or contrast drives the result.\nPCA components are sample-dependent, sign-indeterminate, and unsupervised; selecting components by group separation leaks outcome information.\nComplete-case wide matrices can discard substantial longitudinal information; LMM/GEE are preferable for irregular incomplete follow-up when the estimand is a trajectory effect.\nPCA of repeated occasions mixes level and change; interpret loadings against the time ordering.\nSource-backed: multivariate test statistics, PCA, factor analysis, PCoA, and MDS follow STAT 571. Standard-practice addition: the Orthodont reshaping makes all code self-contained.",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "08-multivariate-testing-pca.html#source-references",
+    "href": "08-multivariate-testing-pca.html#source-references",
+    "title": "8. Multivariate testing and PCA",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/8.0 - Multivariate_Analysis_1_Testing.pdf, pp. 3–16, 18–30, and 32–35 (MVN, Hotelling, MANOVA statistics).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/8.1 - Multivariate_Analysis_2_PCA.pdf, pp. 1–21, 24–39, and 44–51 (PCA, factor analysis, PCoA/MDS).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-006.pdf, pp. 4–23 (longitudinal MANOVA/profile analysis).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/project/Bumjun/fpca.Rmd, R code chunks (functional PCA estimation and eigenfunction visualization; project-specific extension).",
+    "crumbs": [
+      "Core chapters",
+      "8. Multivariate testing and PCA"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html",
+    "href": "04-marginal-models-gee.html",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "",
+    "text": "GEE estimates a population-averaged regression parameter \\(\\beta\\) from a correctly specified marginal mean while treating within-cluster association as nuisance. The sandwich covariance gives asymptotically valid inference under working-correlation misspecification when independent clusters are sufficiently numerous and the observation process satisfies the estimating-equation assumptions.",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#aim",
+    "href": "04-marginal-models-gee.html#aim",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "",
+    "text": "GEE estimates a population-averaged regression parameter \\(\\beta\\) from a correctly specified marginal mean while treating within-cluster association as nuisance. The sandwich covariance gives asymptotically valid inference under working-correlation misspecification when independent clusters are sufficiently numerous and the observation process satisfies the estimating-equation assumptions.",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#model-specification",
+    "href": "04-marginal-models-gee.html#model-specification",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nLet \\[\ng(\\mu_{ij})=x_{ij}^{\\mathsf T}\\beta,\n\\qquad \\operatorname{Var}(Y_i)=V_i=\\phi A_i^{1/2}R_i(\\alpha)A_i^{1/2}.\n\\] GEE solves \\[\nU(\\beta)=\\sum_{i=1}^m D_i^{\\mathsf T}V_i^{-1}(Y_i-\\mu_i)=0,\n\\qquad D_i=\\frac{\\partial\\mu_i}{\\partial\\beta^{\\mathsf T}}.\n\\] The model-based covariance is \\(B^{-1}\\); the sandwich covariance is \\(B^{-1}MB^{-1}\\), with \\(B=\\sum D_i^{\\mathsf T}V_i^{-1}D_i\\) and \\(M=\\sum D_i^{\\mathsf T}V_i^{-1}r_ir_i^{\\mathsf T}V_i^{-1}D_i\\).",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#r-packagesfunctions",
+    "href": "04-marginal-models-gee.html#r-packagesfunctions",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\ngeepack::geeglm() fits GEE with independence, exchangeable, AR(1), and unstructured working correlations; geepack::QIC() compares mean/correlation specifications; the internal geese object exposes robust and naive covariance and the estimated scale. gee::gee() is a useful alternative when SAS-like naive/robust output is desired.",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#data",
+    "href": "04-marginal-models-gee.html#data",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "4. Data",
+    "text": "4. Data\ngeepack::dietox records pig weight longitudinally by pig (Pig), week (Time), and feed treatment (Evit, Cu, Cu035).\n\ndata(\"dietox\", package = \"geepack\")\ndietox &lt;- geepack::dietox |&gt;\n  mutate(Pig = factor(Pig), Cu = relevel(factor(Cu), ref = \"Cu000\")) |&gt;\n  arrange(Pig, Time)\ndplyr::glimpse(dietox)\n\nRows: 861\nColumns: 8\n$ Pig    &lt;fct&gt; 4601, 4601, 4601, 4601, 4601, 4601, 4601, 4601, 4601, 4601, 4601, 4601, 4602, 4602,…\n$ Evit   &lt;fct&gt; Evit000, Evit000, Evit000, Evit000, Evit000, Evit000, Evit000, Evit000, Evit000, Ev…\n$ Cu     &lt;fct&gt; Cu000, Cu000, Cu000, Cu000, Cu000, Cu000, Cu000, Cu000, Cu000, Cu000, Cu000, Cu000,…\n$ Litter &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…\n$ Start  &lt;dbl&gt; 26.50000, 26.50000, 26.50000, 26.50000, 26.50000, 26.50000, 26.50000, 26.50000, 26.…\n$ Weight &lt;dbl&gt; 26.50000, 27.59999, 36.50000, 40.29999, 49.09998, 55.39999, 59.59998, 67.00000, 76.…\n$ Feed   &lt;dbl&gt; NA, 5.200005, 17.600000, 28.500000, 45.200001, 56.900002, 71.700005, 86.800001, 104…\n$ Time   &lt;int&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2,…",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#fit",
+    "href": "04-marginal-models-gee.html#fit",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "5. Fit",
+    "text": "5. Fit\n\ngee_formula &lt;- Weight ~ Time * Cu\n\ngee_ind &lt;- geepack::geeglm(\n  gee_formula, id = Pig, waves = Time, data = dietox,\n  family = gaussian, corstr = \"independence\", std.err = \"san.se\"\n)\ngee_exch &lt;- update(gee_ind, corstr = \"exchangeable\")\ngee_ar1 &lt;- update(gee_ind, corstr = \"ar1\")\ngee_un &lt;- update(gee_ind, corstr = \"unstructured\")\n\nqic_table &lt;- do.call(rbind, lapply(\n  list(independence = gee_ind, exchangeable = gee_exch, AR1 = gee_ar1, unstructured = gee_un),\n  function(z) geepack::QIC(z)\n))\nqic_table\n\n                  QIC     QICu Quasi Lik        CIC params     QICC\nindependence 43130.30 43077.76 -21532.88   32.27188      6 43131.60\nexchangeable 43130.62 43078.35 -21533.18   32.13317      6 43132.37\nAR1          45107.98 45063.29 -22525.64   28.34494      6 45109.73\nunstructured 60208.83 55346.94 -27667.47 2436.94475      6 49696.83\n\nsummary(gee_ar1)\n\n\nCall:\ngeepack::geeglm(formula = gee_formula, family = gaussian, data = dietox, \n    id = Pig, waves = Time, corstr = \"ar1\", std.err = \"san.se\")\n\n Coefficients:\n            Estimate  Std.err     Wald Pr(&gt;|W|)    \n(Intercept) 18.36488  0.42797 1841.400   &lt;2e-16 ***\nTime         6.73265  0.07541 7971.214   &lt;2e-16 ***\nCu1         -0.36873  0.60619    0.370    0.543    \nCu2         -0.27318  0.55114    0.246    0.620    \nTime:Cu1     0.01892  0.09978    0.036    0.850    \nTime:Cu2    -0.06805  0.09963    0.467    0.495    \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nCorrelation structure = ar1 \nEstimated Scale Parameters:\n\n            Estimate Std.err\n(Intercept)    52.32   9.479\n  Link = identity \n\nEstimated Correlation Parameters:\n      Estimate Std.err\nalpha    0.936 0.01058\nNumber of clusters:   72  Maximum cluster size: 12 \n\n\n\nTime-varying covariate decomposition\nSeparating a covariate into subject mean and within-subject deviation avoids conflating between- and within-subject associations. Here lagged weight is used only to demonstrate the parameterization; because it is an endogenous response history, causal interpretation requires transition-model assumptions.\n\ndietox_tv &lt;- dietox |&gt;\n  group_by(Pig) |&gt;\n  mutate(lag_weight = lag(Weight), mean_lag_weight = mean(lag_weight, na.rm = TRUE),\n         dev_lag_weight = lag_weight - mean_lag_weight) |&gt;\n  ungroup() |&gt;\n  filter(!is.na(lag_weight))\n\ngee_within_between &lt;- geepack::geeglm(\n  Weight ~ Time + Cu + mean_lag_weight + dev_lag_weight,\n  id = Pig, waves = Time, data = dietox_tv,\n  family = gaussian, corstr = \"exchangeable\"\n)\nsummary(gee_within_between)\n\n\nCall:\ngeepack::geeglm(formula = Weight ~ Time + Cu + mean_lag_weight + \n    dev_lag_weight, family = gaussian, data = dietox_tv, id = Pig, \n    waves = Time, corstr = \"exchangeable\")\n\n Coefficients:\n                Estimate  Std.err    Wald Pr(&gt;|W|)    \n(Intercept)     -13.2138   2.1834   36.63  1.4e-09 ***\nTime              2.3202   0.3538   43.02  5.4e-11 ***\nCu1               0.0909   0.0910    1.00     0.32    \nCu2              -0.0414   0.0776    0.28     0.59    \nmean_lag_weight   1.0653   0.0119 7966.80  &lt; 2e-16 ***\ndev_lag_weight    0.6922   0.0497  193.65  &lt; 2e-16 ***\n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nCorrelation structure = exchangeable \nEstimated Scale Parameters:\n\n            Estimate Std.err\n(Intercept)     4.58    0.73\n  Link = identity \n\nEstimated Correlation Parameters:\n      Estimate Std.err\nalpha  -0.0375  0.0146\nNumber of clusters:   72  Maximum cluster size: 11 \n\n\nQIC may compare working correlations with a common mean model; compare mean models under a common working correlation. A smaller QIC is preferred, but the criterion does not validate the marginal mean.",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#extract-interpret",
+    "href": "04-marginal-models-gee.html#extract-interpret",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\n\ngee_covariance_table(gee_ar1)\n\n\n  \n\n\nc(\n  working_alpha = unname(gee_ar1$geese$alpha),\n  scale_phi = unname(gee_ar1$geese$gamma)\n)\n\nworking_alpha     scale_phi \n        0.936        52.324 \n\nif (requireNamespace(\"broom\", quietly = TRUE)) {\n  broom::tidy(gee_ar1, conf.int = TRUE)\n}\n\n\n  \n\n\nif (requireNamespace(\"emmeans\", quietly = TRUE)) {\n  emm_time &lt;- emmeans::emtrends(gee_ar1, ~Cu, var = \"Time\", vcov. = gee_ar1$geese$vbeta)\n  emm_time\n  pairs(emm_time, adjust = \"holm\")\n}\n\n contrast      estimate    SE  df t.ratio p.value\n Cu000 - Cu035   0.0870 0.160 855   0.544  1.0000\n Cu000 - Cu175  -0.0302 0.196 855  -0.154  1.0000\n Cu035 - Cu175  -0.1172 0.196 855  -0.598  1.0000\n\nP value adjustment: holm method for 3 tests \n\n\nTime is the population-average weekly mean change in the reference feed group; Time:Cu terms are population-average differences in slopes. alpha parameterizes the chosen working correlation and is not ordinarily a scientific estimand in GEE1. For Gaussian data, \\(\\phi\\) estimates residual scale; for binomial/Poisson responses the canonical scale is often fixed at one, although software can estimate a scale depending on options. Robust SEs come from vbeta; model-based SEs from vbeta.naiv are valid only under the working covariance model.\nFor nonidentity links, GEE and GLMM coefficients differ. With a logistic random-intercept GLMM, \\[\n\\beta_{PA}\\approx \\frac{\\beta_{SS}}{\\sqrt{1+c^2\\sigma_b^2}},\n\\qquad c=\\frac{16\\sqrt3}{15\\pi}\\approx0.588,\n\\] so population-averaged log-odds effects are typically attenuated toward zero. Under a probit link the corresponding factor is \\((1+z_{ij}^{\\mathsf T}Dz_{ij})^{-1/2}\\); under the identity link the coefficients coincide.",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#diagnostics",
+    "href": "04-marginal-models-gee.html#diagnostics",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\ncluster_size &lt;- dietox |&gt; count(Pig, name = \"n_i\")\nsummary(cluster_size$n_i)\n\n   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. \n     11      12      12      12      12      12 \n\ngee_diag &lt;- dietox |&gt;\n  mutate(\n    fitted = fitted(gee_ar1),\n    pearson = residuals(gee_ar1, type = \"pearson\")\n  )\n\nggplot(gee_diag, aes(fitted, pearson)) +\n  geom_point(alpha = 0.5) + geom_hline(yintercept = 0, linetype = 2)\n\n\n\n\n\n\n\nggplot(gee_diag, aes(Time, pearson, group = Pig)) +\n  geom_line(alpha = 0.15) + geom_smooth(aes(group = 1), se = FALSE)\n\n\n\n\n\n\n\ngee_covariance_table(gee_ar1) |&gt;\n  mutate(se_ratio = robust_se / model_based_se)\n\n\n  \n\n\n\nCheck subject sorting, unique subject-wave keys, cluster-size distribution, leverage from large clusters, mean-model residual trends, and sensitivity of estimates/SEs to plausible working correlations.",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#caveats",
+    "href": "04-marginal-models-gee.html#caveats",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nGEE coefficients are population-averaged; GLMM coefficients are subject-specific conditional on random effects. Equality generally fails for nonidentity links.\nSandwich validity is asymptotic in the number of independent clusters; small-cluster corrections are not the default in geeglm().\nOrdinary GEE is generally valid under MCAR, not arbitrary MAR dropout. Use weighted GEE or another valid missing-data method when observation depends on observed history.\ngeeglm() requires rows ordered by cluster and, for AR(1), correctly ordered waves.\nTime-varying covariates can be external or endogenous; coefficients for endogenous covariates generally need a conditional/transition interpretation, and naive GEE can be biased when the covariate process depends on prior outcomes.\nQIC is not AIC: it is based on quasi-likelihood and must be interpreted within comparable GEE specifications.\nIn geepack, vbeta is robust and vbeta.naiv is model-based. SAS/other R packages may label these empirical and model-based/naive; verify which covariance a printed table uses.\nScale estimation defaults differ across geepack, gee, and SAS PROC GENMOD/PROC GEE; set and report the rule explicitly.\nSource-backed: estimating equations, sandwich inference, working correlations, QIC, scale, and PA interpretation follow the notes. Standard-practice addition: direct extraction helpers and emmeans::emtrends() are idiomatic R replacements for SAS contrasts.",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "04-marginal-models-gee.html#source-references",
+    "href": "04-marginal-models-gee.html#source-references",
+    "title": "4. Marginal models and generalized estimating equations",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf, pp. 39–52, 62–68, and 77–80 (GEE, sandwich/model-based covariance, working correlation, QIC).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.1 - GEE_1.pdf, pp. 8–19 (estimating equation and working covariance); /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.2 - GEE_2.pdf, pp. 1–7 and 10–19 (association and scale estimation).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.3 - GEE_3.pdf, pp. 1–9 (robust Wald/score inference).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf, pp. 5–13 (marginalization and attenuation formula).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Kaicheng/Assignment6/Marginal Model.r, lines 35–184 (R working-correlation fits, robust/naive SEs, alpha, odds ratios, Wald tests).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/HW3/STAT571-HW3-WenbinWu-Code.Rmd, GEE code chunks (independence/exchangeable comparisons and simulation).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-021.pdf, pp. 3–37 (time-varying covariates and lagged exposure models).",
+    "crumbs": [
+      "Core chapters",
+      "4. Marginal models and generalized estimating equations"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html",
+    "href": "01-eda-descriptive.html",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "",
+    "text": "Exploratory longitudinal analysis estimates the observed mean profile, between-subject heterogeneity, within-subject covariance by lag, and the support of the observation process before a model is imposed. The principal targets are \\(E(Y_{ij}\\mid G_i,t_{ij})\\), \\(\\operatorname{Cov}(Y_{ij},Y_{ik}\\mid G_i)\\), and the empirical distribution of missingness patterns.",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#aim",
+    "href": "01-eda-descriptive.html#aim",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "",
+    "text": "Exploratory longitudinal analysis estimates the observed mean profile, between-subject heterogeneity, within-subject covariance by lag, and the support of the observation process before a model is imposed. The principal targets are \\(E(Y_{ij}\\mid G_i,t_{ij})\\), \\(\\operatorname{Cov}(Y_{ij},Y_{ik}\\mid G_i)\\), and the empirical distribution of missingness patterns.",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#model-specification",
+    "href": "01-eda-descriptive.html#model-specification",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nFor descriptive purposes write \\[\nY_{ij}=\\mu_{G_i}(t_{ij})+\\varepsilon_{ij},\\qquad\n\\gamma(h)=\\tfrac12 E\\{(\\varepsilon_i(t+h)-\\varepsilon_i(t))^2\\}.\n\\] The empirical variogram estimates \\(\\gamma(h)\\); the time-indexed sample covariance matrix estimates \\(\\Sigma=(\\sigma_{jk})\\) only from subjects observed at the relevant pairs of occasions.",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#r-packagesfunctions",
+    "href": "01-eda-descriptive.html#r-packagesfunctions",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nggplot2 supplies profile and mean-profile graphics; dplyr/tidyr supply subject-time summaries and wide matrices; nlme::Variogram() computes a residual semivariogram; naniar supplies optional graphical missingness summaries.",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#data",
+    "href": "01-eda-descriptive.html#data",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "4. Data",
+    "text": "4. Data\nnlme::Orthodont has one row per subject-age occasion: 27 subjects, four planned ages, sex, and orthodontic distance.\n\ndata(\"Orthodont\", package = \"nlme\")\north &lt;- as.data.frame(Orthodont) |&gt;\n  mutate(Subject = factor(Subject), age_f = factor(age))\ndplyr::glimpse(orth)\n\nRows: 108\nColumns: 5\n$ distance &lt;dbl&gt; 26.0, 25.0, 29.0, 31.0, 21.5, 22.5, 23.0, 26.5, 23.0, 22.5, 24.0, 27.5, 25.5, 27.…\n$ age      &lt;dbl&gt; 8, 10, 12, 14, 8, 10, 12, 14, 8, 10, 12, 14, 8, 10, 12, 14, 8, 10, 12, 14, 8, 10,…\n$ Subject  &lt;ord&gt; M01, M01, M01, M01, M02, M02, M02, M02, M03, M03, M03, M03, M04, M04, M04, M04, M…\n$ Sex      &lt;fct&gt; Male, Male, Male, Male, Male, Male, Male, Male, Male, Male, Male, Male, Male, Mal…\n$ age_f    &lt;fct&gt; 8, 10, 12, 14, 8, 10, 12, 14, 8, 10, 12, 14, 8, 10, 12, 14, 8, 10, 12, 14, 8, 10,…",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#fit",
+    "href": "01-eda-descriptive.html#fit",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "5. Fit",
+    "text": "5. Fit\n\nIndividual profiles and group means \\(\\pm\\) SE\n\nggplot(orth, aes(age, distance, group = Subject, color = Sex)) +\n  geom_line(alpha = 0.45, linewidth = 0.5) +\n  geom_point(alpha = 0.65, size = 1) +\n  facet_wrap(~Sex) +\n  labs(y = \"Orthodontic distance\")\n\n\n\n\n\n\n\nmean_profile &lt;- orth |&gt;\n  group_by(Sex, age) |&gt;\n  summarize(\n    n = sum(!is.na(distance)),\n    mean = mean(distance, na.rm = TRUE),\n    se = sd(distance, na.rm = TRUE) / sqrt(n),\n    .groups = \"drop\"\n  )\n\nggplot(mean_profile, aes(age, mean, color = Sex, fill = Sex)) +\n  geom_ribbon(aes(ymin = mean - se, ymax = mean + se), alpha = 0.18, color = NA) +\n  geom_line(linewidth = 0.9) + geom_point() +\n  labs(y = \"Mean distance (pointwise mean +/- SE)\")\n\n\n\n\n\n\n\n\n\n\nSample covariance/correlation over time\n\north_wide &lt;- orth |&gt;\n  select(Subject, age_f, distance) |&gt;\n  pivot_wider(names_from = age_f, values_from = distance)\n\nY &lt;- as.matrix(orth_wide[-1])\nround(stats::cov(Y, use = \"pairwise.complete.obs\"), 3)\n\n       8    10    12    14\n8  5.926 3.285 4.875 4.040\n10 3.285 4.654 3.859 4.532\n12 4.875 3.859 7.939 6.197\n14 4.040 4.532 6.197 7.655\n\nround(stats::cor(Y, use = \"pairwise.complete.obs\"), 3)\n\n       8    10    12    14\n8  1.000 0.626 0.711 0.600\n10 0.626 1.000 0.635 0.759\n12 0.711 0.635 1.000 0.795\n14 0.600 0.759 0.795 1.000\n\n\n\n\nEmpirical residual variogram\n\neda_gls &lt;- nlme::gls(distance ~ Sex * age, data = orth, method = \"REML\")\nvg &lt;- nlme::Variogram(eda_gls, form = ~ age | Subject, resType = \"normalized\")\nvg\n\n\n  \n\n\nplot(vg, smooth = TRUE)\n\n\n\n\n\n\n\n\n\n\nMissing-data patterns\n\n# Reproducible incomplete copy; the source dataset remains unchanged.\north_miss &lt;- orth |&gt;\n  mutate(\n    distance = replace(distance, Subject %in% levels(Subject)[1:3] & age &gt;= 12, NA_real_),\n    distance = replace(distance, Subject %in% levels(Subject)[4:5] & age == 10, NA_real_)\n  )\n\nmiss_matrix &lt;- orth_miss |&gt;\n  select(Subject, age_f, distance) |&gt;\n  pivot_wider(names_from = age_f, values_from = distance) |&gt;\n  arrange(Subject)\n\npattern_table &lt;- miss_matrix |&gt;\n  mutate(pattern = apply(!is.na(pick(-Subject)), 1, paste0, collapse = \"\")) |&gt;\n  count(pattern, name = \"subjects\", sort = TRUE)\npattern_table\n\n\n  \n\n\nif (requireNamespace(\"naniar\", quietly = TRUE)) {\n  naniar::vis_miss(miss_matrix)\n}",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#extract-interpret",
+    "href": "01-eda-descriptive.html#extract-interpret",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\nThe spaghetti plot displays subject-level trajectory heterogeneity; the mean-profile interaction is read from nonparallel group curves, not from overlapping pointwise SE bands. Diagonal covariance entries are occasion-specific variances; off-diagonal entries and correlations summarize pairwise within-subject dependence. An increasing semivariogram indicates diminishing residual association with temporal separation. Pattern strings use 1 = observed, 0 = missing in increasing-age order.",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#diagnostics",
+    "href": "01-eda-descriptive.html#diagnostics",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\north |&gt;\n  count(Subject, name = \"n_visit\") |&gt;\n  summarize(min_visits = min(n_visit), max_visits = max(n_visit))\n\n\n  \n\n\north |&gt;\n  count(Subject, age) |&gt;\n  filter(n != 1L)                         # duplicate or absent subject-time keys\n\n\n  \n\n\ncolSums(!is.na(Y))                        # pairwise support differs if data are incomplete\n\n 8 10 12 14 \n27 27 27 27 \n\n\nConfirm subject-time uniqueness, ordering, visit support, and whether scheduled time differs materially from actual time before estimating a covariance by lag.",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#caveats",
+    "href": "01-eda-descriptive.html#caveats",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nPointwise SEs describe uncertainty in observed group means; they are not simultaneous bands and do not test a group-by-time interaction.\nPairwise covariance matrices under missingness can fail to be positive semidefinite because entries use different subject subsets.\nA raw-response variogram confounds mean misspecification with dependence; compute it from residuals of a sufficiently rich mean model.\nnaniar is a visualization layer; mechanism labels (MCAR/MAR/MNAR) are assumptions, not identifiable from a missingness plot.\nSource-backed: profile, mean, covariance, and missing-pattern workflows follow the BIOS 767 materials. Standard-practice addition: the naniar plot and explicit key/support checks are idiomatic R additions.",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "01-eda-descriptive.html#source-references",
+    "href": "01-eda-descriptive.html#source-references",
+    "title": "1. Exploratory and descriptive analysis",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-001.pdf, pp. 14–22 (longitudinal organization and exploratory profiles).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/02-HW3-Data-Visualizations.sas, lines 24–119 (spaghetti plots, mean profiles, timing variability).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Wenbin/Assignment1/2026-01-16_descriptive_stat.R, lines 16–90 (R profiles and mean +/- SE).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-012.pdf, pp. 26–30 (empirical variogram/residual correlation diagnostics).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-018-1.pdf, pp. 8–13 and 24 (missingness patterns).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf, pp. 2–5 (dropout and intermittent patterns).",
+    "crumbs": [
+      "Core chapters",
+      "1. Exploratory and descriptive analysis"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html",
+    "href": "06-glmm.html",
+    "title": "6. Generalized linear mixed models",
+    "section": "",
+    "text": "GLMMs estimate subject-specific effects for non-Gaussian repeated outcomes by conditioning on latent random effects. Likelihood inference integrates over the random-effects distribution; Laplace and adaptive Gauss–Hermite quadrature trade computation against approximation accuracy.",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#aim",
+    "href": "06-glmm.html#aim",
+    "title": "6. Generalized linear mixed models",
+    "section": "",
+    "text": "GLMMs estimate subject-specific effects for non-Gaussian repeated outcomes by conditioning on latent random effects. Likelihood inference integrates over the random-effects distribution; Laplace and adaptive Gauss–Hermite quadrature trade computation against approximation accuracy.",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#model-specification",
+    "href": "06-glmm.html#model-specification",
+    "title": "6. Generalized linear mixed models",
+    "section": "2. Model specification",
+    "text": "2. Model specification\n\\[\ng\\{E(Y_{ij}\\mid b_i)\\}=x_{ij}^{\\mathsf T}\\beta+z_{ij}^{\\mathsf T}b_i+log(e_{ij}),\n\\qquad b_i\\sim N(0,D),\n\\] with conditional independence of \\(Y_{ij}\\) given \\(b_i\\). The marginal likelihood contribution is \\[\nL_i(\\beta,D)=\\int\\left\\{\\prod_j f(y_{ij}\\mid b_i;\\beta)\\right\\}\\phi(b_i;0,D)\\,db_i.\n\\]",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#r-packagesfunctions",
+    "href": "06-glmm.html#r-packagesfunctions",
+    "title": "6. Generalized linear mixed models",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nlme4::glmer() fits standard-family GLMMs using Laplace (nAGQ = 1) or adaptive Gauss–Hermite quadrature (nAGQ &gt; 1, scalar random effect). glmmTMB::glmmTMB() supports negative-binomial, zero-inflated, hurdle, beta-binomial, offset, and dispersion submodels. DHARMa supplies simulation-based diagnostics.",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#data",
+    "href": "06-glmm.html#data",
+    "title": "6. Generalized linear mixed models",
+    "section": "4. Data",
+    "text": "4. Data\nMASS::epil contains four repeated seizure counts per subject; exposure = 2 denotes the two-week count interval.\n\ndata(\"epil\", package = \"MASS\")\nepil &lt;- MASS::epil |&gt;\n  mutate(subject = factor(subject), period_c = period - 1, exposure = 2)",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#fit",
+    "href": "06-glmm.html#fit",
+    "title": "6. Generalized linear mixed models",
+    "section": "5. Fit",
+    "text": "5. Fit\n\nform &lt;- y ~ trt * period_c + lbase + lage + offset(log(exposure)) + (1 | subject)\n\npois_laplace &lt;- glmer(\n  form, data = epil, family = poisson(link = \"log\"), nAGQ = 1,\n  control = glmerControl(optimizer = \"bobyqa\", optCtrl = list(maxfun = 2e5))\n)\npois_agq &lt;- update(pois_laplace, nAGQ = 7)\n\nsummary(pois_laplace)\n\nGeneralized linear mixed model fit by maximum likelihood (Laplace Approximation) ['glmerMod']\n Family: poisson  ( log )\nFormula: y ~ trt * period_c + lbase + lage + offset(log(exposure)) + (1 |      subject)\n   Data: epil\nControl: glmerControl(optimizer = \"bobyqa\", optCtrl = list(maxfun = 2e+05))\n\n      AIC       BIC    logLik -2*log(L)  df.resid \n   1347.4    1371.7    -666.7    1333.4       229 \n\nScaled residuals: \n    Min      1Q  Median      3Q     Max \n-3.3410 -0.8987 -0.1029  0.5736  7.1561 \n\nRandom effects:\n Groups  Name        Variance Std.Dev.\n subject (Intercept) 0.2667   0.5164  \nNumber of obs: 236, groups:  subject, 59\n\nFixed effects:\n              Estimate Std. Error z value Pr(&gt;|z|)    \n(Intercept)    1.02901    0.08054  12.776  &lt; 2e-16 ***\ntrt1           0.13551    0.08061   1.681  0.09277 .  \nperiod_c      -0.05854    0.02018  -2.900  0.00373 ** \nlbase          1.02802    0.10115  10.163  &lt; 2e-16 ***\nlage           0.33589    0.34282   0.980  0.32719    \ntrt1:period_c  0.01574    0.02018   0.780  0.43558    \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nCorrelation of Fixed Effects:\n            (Intr) trt1   perd_c lbase  lage  \ntrt1         0.017                            \nperiod_c    -0.358 -0.009                     \nlbase       -0.096  0.037  0.000              \nlage        -0.009 -0.117  0.000  0.173       \ntrt1:perd_c -0.009 -0.357  0.011  0.000  0.000\n\ncbind(Laplace = fixef(pois_laplace), AGQ7 = fixef(pois_agq))\n\n                  Laplace        AGQ7\n(Intercept)    1.02900632  1.02877458\ntrt1           0.13550712  0.13561780\nperiod_c      -0.05854259 -0.05854263\nlbase          1.02802112  1.02805965\nlage           0.33588985  0.33566644\ntrt1:period_c  0.01573738  0.01573753\n\nAIC(pois_laplace, pois_agq)\n\n\n  \n\n\n\n\nif (requireNamespace(\"glmmTMB\", quietly = TRUE)) {\n  nb_glmm &lt;- glmmTMB::glmmTMB(\n    y ~ trt * period_c + lbase + lage + offset(log(exposure)) + (1 | subject),\n    data = epil,\n    family = glmmTMB::nbinom2(link = \"log\")\n  )\n  summary(nb_glmm)\n  AIC(pois_laplace, nb_glmm)\n}\n\n\n  \n\n\n\n\nTransition model\n\nepil_transition &lt;- epil |&gt;\n  group_by(subject) |&gt;\n  arrange(period, .by_group = TRUE) |&gt;\n  mutate(lag_y = lag(y)) |&gt;\n  ungroup() |&gt;\n  filter(!is.na(lag_y))\n\ntransition_fit &lt;- glm(\n  y ~ trt + period_c + log1p(lag_y) + lbase + lage,\n  family = quasipoisson(link = \"log\"), data = epil_transition\n)\nsummary(transition_fit)\n\n\nCall:\nglm(formula = y ~ trt + period_c + log1p(lag_y) + lbase + lage, \n    family = quasipoisson(link = \"log\"), data = epil_transition)\n\nCoefficients:\n             Estimate Std. Error t value Pr(&gt;|t|)    \n(Intercept)   0.90027    0.21272   4.232 3.77e-05 ***\ntrt1          0.03065    0.05524   0.555    0.580    \nperiod_c     -0.04029    0.06364  -0.633    0.527    \nlog1p(lag_y)  0.49375    0.08001   6.171 4.76e-09 ***\nlbase         0.60395    0.11222   5.382 2.40e-07 ***\nlage          0.07561    0.25769   0.293    0.770    \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n(Dispersion parameter for quasipoisson family taken to be 3.824099)\n\n    Null deviance: 1770.91  on 176  degrees of freedom\nResidual deviance:  555.05  on 171  degrees of freedom\nAIC: NA\n\nNumber of Fisher Scoring iterations: 5",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#extract-interpret",
+    "href": "06-glmm.html#extract-interpret",
+    "title": "6. Generalized linear mixed models",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\n\nexp(cbind(estimate = fixef(pois_agq), confint(pois_agq, parm = \"beta_\", method = \"Wald\")))\n\n              estimate     2.5 %    97.5 %\n(Intercept)   2.797635 2.3873622 3.2784150\ntrt1          1.145244 0.9772055 1.3421784\nperiod_c      0.943138 0.9063716 0.9813959\nlbase         2.795636 2.2909868 3.4114473\nlage          1.398872 0.7124896 2.7464877\ntrt1:period_c 1.015862 0.9762606 1.0570699\n\nas.data.frame(VarCorr(pois_agq))\n\n\n  \n\n\nhead(ranef(pois_agq)$subject)\n\n\n  \n\n\nconditional_rate &lt;- predict(pois_agq, type = \"response\", re.form = NULL)\nfixed_re_zero_rate &lt;- predict(pois_agq, type = \"response\", re.form = NA)\nhead(cbind(conditional_rate, fixed_re_zero_rate))\n\n  conditional_rate fixed_re_zero_rate\n1         3.573597           3.059639\n2         3.423856           2.931435\n3         3.280390           2.808602\n4         3.142936           2.690916\n5         3.565044           3.026148\n6         3.415662           2.899347\n\n\nFixed-effect exponentials are subject-specific conditional rate ratios at equal random effects. The random-intercept variance is heterogeneity on the log-rate scale; ranef() returns empirical-Bayes conditional modes. re.form = NULL predicts for fitted subjects conditional on their random effects; re.form = NA sets random effects to zero and is not, for a nonlinear link, the marginal population mean.\nUnder a logistic random-intercept model, \\[\n\\beta_{PA}\\approx\\beta_{SS}/\\sqrt{1+0.35\\sigma_b^2},\n\\] so the corresponding GEE coefficient is typically attenuated. Under a log link with normal random intercept, marginalization adds \\(\\sigma_b^2/2\\) to the intercept when random-effect variance is covariate-invariant; slopes then retain the same multiplicative interpretation.",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#diagnostics",
+    "href": "06-glmm.html#diagnostics",
+    "title": "6. Generalized linear mixed models",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\nlme4::isSingular(pois_laplace)\n\n[1] FALSE\n\npois_laplace@optinfo$conv$lme4$messages\n\nNULL\n\npearson &lt;- residuals(pois_laplace, type = \"pearson\")\noverdispersion &lt;- sum(pearson^2) / (nobs(pois_laplace) - length(fixef(pois_laplace)))\noverdispersion\n\n[1] 1.577403\n\nggplot(data.frame(fitted = fitted(pois_laplace), pearson), aes(fitted, pearson)) +\n  geom_point() + geom_hline(yintercept = 0, linetype = 2)\n\n\n\n\n\n\n\nif (requireNamespace(\"DHARMa\", quietly = TRUE)) {\n  sim_res &lt;- DHARMa::simulateResiduals(pois_laplace, n = 250, plot = FALSE)\n  plot(sim_res)\n  DHARMa::testDispersion(sim_res)\n  DHARMa::testZeroInflation(sim_res)\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n    DHARMa zero-inflation test via comparison to expected zeros with simulation under H0 =\n    fitted model\n\ndata:  simulationOutput\nratioObsSim = 1.9334, p-value = 0.008\nalternative hypothesis: two.sided\n\n\nCompare Laplace and higher-order quadrature when cluster sizes are small or random-effect variance is large; inspect gradients/Hessian, singularity, simulated residual uniformity, dispersion, zero inflation, and subject-level influence.",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#caveats",
+    "href": "06-glmm.html#caveats",
+    "title": "6. Generalized linear mixed models",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nGEE is population-averaged; GLMM is subject-specific. Do not compare coefficient magnitudes without marginalization and link-specific attenuation.\nglmer() uses Laplace at nAGQ = 1; nAGQ = 0 is a faster, less accurate approximation. Adaptive quadrature with nAGQ &gt; 1 is restricted to a single scalar random-effect term.\nSAS PROC GLIMMIX may default to pseudo-likelihood or different quadrature depending on options; match the estimation method explicitly before comparing results.\nOverdispersion can reflect omitted random effects, serial dependence, zero inflation, or a wrong mean/variance family; a negative-binomial fit is not an automatic cure.\nLRTs for random-effect variances have boundary nulls; plain chi-square p-values can be anticonservative.\nConditional modes are shrunken predictions and their empirical distribution is not a direct normality test of the latent population.\nA transition-model coefficient conditions on observed response history and is neither a GEE marginal effect nor a random-effects subject-specific effect; initial-condition and missing-history handling must be stated.\nSource-backed: conditional interpretation, marginal likelihood, quadrature/approximations, and empirical Bayes follow the notes. Standard-practice addition: glmmTMB and DHARMa supply current idiomatic R implementations.",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "06-glmm.html#source-references",
+    "href": "06-glmm.html#source-references",
+    "title": "6. Generalized linear mixed models",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-015.pdf, pp. 5–24, 31–39, and 50–61 (GLMM specification, estimation, interpretation).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.0 - GLMM_1.pdf, pp. 1–16 and 22–30 (subject-specific models).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf, pp. 5–13 (GEE/GLMM marginalization and attenuation).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.2 - GLMM_3.pdf, pp. 1–21; /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.3 - GLMM_4.pdf, pp. 1–7 (quadrature, Laplace, PQL, empirical Bayes).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Wenbin/Assignment7/BIOS767-HW7.Rmd, code chunks fit_models and random_effects_predictions (R GLMM comparison and predictions).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/HW5/STAT571-HW5-Code.Rmd, GLMM/GEE comparison chunks (conditional versus marginal fits).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-020.pdf, pp. 2–32 (transition models and lagged responses).",
+    "crumbs": [
+      "Core chapters",
+      "6. Generalized linear mixed models"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html",
+    "href": "07-missing-data.html",
+    "title": "7. Missing longitudinal data",
+    "section": "",
+    "text": "Missing-data analysis targets the full-data estimand under an explicit observation-process assumption. Likelihood/MI methods are generally valid under MAR given an adequate joint or imputation model; ordinary GEE typically requires MCAR, whereas inverse-probability-weighted GEE can be valid under correctly modeled MAR dropout. MNAR requires an unverifiable selection, pattern-mixture, shared-parameter, or sensitivity model.",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#aim",
+    "href": "07-missing-data.html#aim",
+    "title": "7. Missing longitudinal data",
+    "section": "",
+    "text": "Missing-data analysis targets the full-data estimand under an explicit observation-process assumption. Likelihood/MI methods are generally valid under MAR given an adequate joint or imputation model; ordinary GEE typically requires MCAR, whereas inverse-probability-weighted GEE can be valid under correctly modeled MAR dropout. MNAR requires an unverifiable selection, pattern-mixture, shared-parameter, or sensitivity model.",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#model-specification",
+    "href": "07-missing-data.html#model-specification",
+    "title": "7. Missing longitudinal data",
+    "section": "2. Model specification",
+    "text": "2. Model specification\nLet \\(R_{ij}=1\\) indicate observation. Mechanisms are \\[\n\\begin{aligned}\n\\text{MCAR: }&P(R\\mid Y_{obs},Y_{mis},X)=P(R\\mid X),\\\\\n\\text{MAR: }&P(R\\mid Y_{obs},Y_{mis},X)=P(R\\mid Y_{obs},X),\\\\\n\\text{MNAR: }&P(R\\mid Y_{obs},Y_{mis},X)\\text{ depends on }Y_{mis}.\n\\end{aligned}\n\\] MI combines \\(m\\) estimates with \\[\n\\bar Q=m^{-1}\\sum Q_k,\\quad T=\\bar U+(1+m^{-1})B.\n\\] For monotone dropout, IPW solves \\(\\sum_i D_i^{\\mathsf T}V_i^{-1}W_i(Y_i-\\mu_i)=0\\), where \\(W_i\\) contains inverse estimated observation probabilities.",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#r-packagesfunctions",
+    "href": "07-missing-data.html#r-packagesfunctions",
+    "title": "7. Missing longitudinal data",
+    "section": "3. R packages/functions",
+    "text": "3. R packages/functions\nmice performs multiple imputation and Rubin pooling; wide-format imputation is often convenient for a small fixed visit grid. geepack accepts observation/dropout weights. tidyr::fill() demonstrates LOCF but does not make it valid. naniar visualizes patterns.",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#data",
+    "href": "07-missing-data.html#data",
+    "title": "7. Missing longitudinal data",
+    "section": "4. Data",
+    "text": "4. Data\nAn incomplete version of nlme::Orthodont is generated reproducibly with monotone dropout after age 10 depending on observed age-10 distance and sex; this is MAR by construction.\n\ndata(\"Orthodont\", package = \"nlme\")\north &lt;- as.data.frame(Orthodont) |&gt;\n  arrange(Subject, age) |&gt;\n  mutate(Subject = factor(Subject), male = as.integer(Sex == \"Male\"), age_c = age - 8)\n\nset.seed(767)\ndrop_info &lt;- orth |&gt;\n  filter(age == 10) |&gt;\n  transmute(\n    Subject,\n    p_drop = plogis(-0.8 + 0.35 * (distance - mean(distance)) + 0.35 * male),\n    dropout = rbinom(n(), 1, p_drop)\n  )\n\north_miss &lt;- orth |&gt;\n  left_join(drop_info, by = \"Subject\") |&gt;\n  mutate(distance_obs = ifelse(dropout == 1 & age &gt;= 12, NA_real_, distance))\nwith(orth_miss, table(age, is.na(distance_obs)))\n\n    \nage  FALSE TRUE\n  8     27    0\n  10    27    0\n  12    17   10\n  14    17   10",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#fit",
+    "href": "07-missing-data.html#fit",
+    "title": "7. Missing longitudinal data",
+    "section": "5. Fit",
+    "text": "5. Fit\n\nLOCF (display only; not the primary analysis)\n\nlocf_data &lt;- orth_miss |&gt;\n  group_by(Subject) |&gt;\n  mutate(distance_locf = distance_obs) |&gt;\n  fill(distance_locf, .direction = \"down\") |&gt;\n  ungroup()\nhead(locf_data[is.na(locf_data$distance_obs), c(\"Subject\", \"age\", \"distance_obs\", \"distance_locf\")])\n\n\n  \n\n\n\n\n\nMultiple imputation in wide visit format\n\nwide_miss &lt;- orth_miss |&gt;\n  select(Subject, male, age, distance_obs) |&gt;\n  pivot_wider(names_from = age, values_from = distance_obs, names_prefix = \"d\") |&gt;\n  mutate(Subject = as.integer(Subject))\n\nif (requireNamespace(\"mice\", quietly = TRUE)) {\n  ini &lt;- mice::mice(wide_miss, maxit = 0, printFlag = FALSE)\n  meth &lt;- ini$method\n  pred &lt;- ini$predictorMatrix\n  meth[c(\"Subject\", \"male\")] &lt;- \"\"\n  pred[, \"Subject\"] &lt;- 0\n  pred[\"male\", ] &lt;- 0\n\n  imp &lt;- mice::mice(\n    wide_miss, m = 10, maxit = 10,\n    method = meth, predictorMatrix = pred,\n    seed = 767, printFlag = FALSE\n  )\n\n  fits &lt;- lapply(seq_len(imp$m), function(k) {\n    mice::complete(imp, k) |&gt;\n      pivot_longer(starts_with(\"d\"), names_to = \"age\", values_to = \"distance\") |&gt;\n      mutate(age = as.numeric(sub(\"d\", \"\", age)), age_c = age - 8, Subject = factor(Subject)) |&gt;\n      lmer(distance ~ male * age_c + (1 | Subject), data = _, REML = FALSE)\n  })\n  mi_pool &lt;- mice::pool(mice::as.mira(fits))\n  summary(mi_pool, conf.int = TRUE)\n}\n\n\n  \n\n\n\n\n\nObserved-data EM estimate under multivariate normality\n\nif (requireNamespace(\"norm\", quietly = TRUE)) {\n  y_wide &lt;- as.matrix(wide_miss[c(\"d8\", \"d10\", \"d12\", \"d14\")])\n  prelim &lt;- norm::prelim.norm(y_wide)\n  theta_em &lt;- norm::em.norm(prelim, showits = FALSE)\n  em_parameters &lt;- norm::getparam.norm(prelim, theta_em)\n  em_parameters$mu\n  em_parameters$sigma\n}\n\n         [,1]     [,2]     [,3]     [,4]\n[1,] 5.706447 3.163580 4.608030 4.835840\n[2,] 3.163580 4.481481 3.625584 5.430846\n[3,] 4.608030 3.625584 8.635840 7.101623\n[4,] 4.835840 5.430846 7.101623 9.694193\n\n\n\n\nPattern-mixture sensitivity parameterization\n\npattern_fit &lt;- lmer(\n  distance_obs ~ male + age_c * factor(dropout) + (1 | Subject),\n  data = orth_miss, REML = FALSE\n)\nsummary(pattern_fit)\n\nLinear mixed model fit by maximum likelihood  ['lmerMod']\nFormula: distance_obs ~ male + age_c * factor(dropout) + (1 | Subject)\n   Data: orth_miss\n\n      AIC       BIC    logLik -2*log(L)  df.resid \n    369.7     387.1    -177.9     355.7        81 \n\nScaled residuals: \n    Min      1Q  Median      3Q     Max \n-3.4108 -0.5264 -0.0191  0.5240  3.5074 \n\nRandom effects:\n Groups   Name        Variance Std.Dev.\n Subject  (Intercept) 1.64     1.281   \n Residual             2.33     1.526   \nNumber of obs: 88, groups:  Subject, 27\n\nFixed effects:\n                       Estimate Std. Error t value\n(Intercept)            20.67142    0.52196  39.603\nmale                    2.90009    0.63967   4.534\nage_c                   0.59926    0.17561   3.412\nfactor(dropout)1       -1.21854    0.39612  -3.076\nage_c:factor(dropout)1  0.09926    0.17561   0.565\n\nCorrelation of Fixed Effects:\n            (Intr) male   age_c  fct()1\nmale        -0.678                     \nage_c       -0.374  0.000              \nfctr(drpt)1 -0.080 -0.247  0.345       \nag_c:fct()1  0.262  0.000 -0.889 -0.493\n\n\n\n\nDropout model and weighted GEE\n\nipw_dat &lt;- orth_miss |&gt;\n  group_by(Subject) |&gt;\n  mutate(\n    visit = row_number(),\n    R = as.integer(!is.na(distance_obs)),\n    lag_y = lag(distance_obs),\n    at_risk = lag(R, default = 1L) == 1L\n  ) |&gt;\n  ungroup()\n\nden_fit &lt;- glm(\n  R ~ male + age_c + lag_y,\n  family = binomial,\n  data = filter(ipw_dat, visit &gt; 1, at_risk)\n)\nnum_fit &lt;- glm(\n  R ~ male + age_c,\n  family = binomial,\n  data = filter(ipw_dat, visit &gt; 1, at_risk)\n)\n\nrisk_rows &lt;- which(ipw_dat$visit &gt; 1 & ipw_dat$at_risk)\nipw_dat$p_den &lt;- 1\nipw_dat$p_num &lt;- 1\nipw_dat$p_den[risk_rows] &lt;- pmax(predict(den_fit, type = \"response\"), 0.02)\nipw_dat$p_num[risk_rows] &lt;- pmax(predict(num_fit, type = \"response\"), 0.02)\nipw_dat &lt;- ipw_dat |&gt;\n  group_by(Subject) |&gt;\n  mutate(sw = cumprod(ifelse(R == 1, p_num / p_den, 1))) |&gt;\n  ungroup()\n\nif (requireNamespace(\"geepack\", quietly = TRUE)) {\n  wg &lt;- geepack::geeglm(\n    distance_obs ~ male * age_c,\n    id = Subject, waves = visit, weights = sw,\n    data = filter(ipw_dat, R == 1),\n    family = gaussian, corstr = \"independence\"\n  )\n  summary(wg)\n}\n\n\nCall:\ngeepack::geeglm(formula = distance_obs ~ male * age_c, family = gaussian, \n    data = filter(ipw_dat, R == 1), weights = sw, id = Subject, \n    waves = visit, corstr = \"independence\")\n\n Coefficients:\n            Estimate Std.err     Wald Pr(&gt;|W|)    \n(Intercept)  21.4421  0.6115 1229.466  &lt; 2e-16 ***\nmale          1.2259  0.8254    2.206  0.13750    \nage_c         0.2424  0.1097    4.885  0.02709 *  \nmale:age_c    0.4935  0.1694    8.489  0.00357 ** \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nCorrelation structure = independence \nEstimated Scale Parameters:\n\n            Estimate Std.err\n(Intercept)    4.396  0.8611\nNumber of clusters:   27  Maximum cluster size: 4",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#extract-interpret",
+    "href": "07-missing-data.html#extract-interpret",
+    "title": "7. Missing longitudinal data",
+    "section": "6. Extract & interpret",
+    "text": "6. Extract & interpret\nMI estimates combine across completed datasets; ubar, b, and total variance distinguish within- and between-imputation uncertainty. IPW coefficients target the marginal mean in the pseudo-population induced by inverse observation probabilities. The dropout logistic coefficients describe association with continued observation, not the scientific outcome model.",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#diagnostics",
+    "href": "07-missing-data.html#diagnostics",
+    "title": "7. Missing longitudinal data",
+    "section": "7. Diagnostics",
+    "text": "7. Diagnostics\n\nif (exists(\"imp\")) {\n  plot(imp)                         # chain means/SDs by iteration\n  mice::densityplot(imp, ~d14)\n}\n\n\n\n\n\n\n\nsummary(ipw_dat$sw[ipw_dat$R == 1])\n\n   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. \n  0.546   0.926   1.000   0.983   1.000   1.699 \n\nquantile(ipw_dat$sw[ipw_dat$R == 1], c(0, .01, .5, .99, 1))\n\n    0%     1%    50%    99%   100% \n0.5463 0.6897 1.0000 1.4712 1.6985 \n\ntable(ipw_dat$R, ipw_dat$visit)\n\n   \n     1  2  3  4\n  0  0  0 10 10\n  1 27 27 17 17\n\n\nFor MI, inspect convergence, observed/imputed distributions, transformations, bounds, interactions, and whether the imputation model is at least as rich as the analysis model. For IPW, inspect positivity, extreme weights, dropout-model calibration, and sensitivity to truncation.",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#caveats",
+    "href": "07-missing-data.html#caveats",
+    "title": "7. Missing longitudinal data",
+    "section": "8. Caveats",
+    "text": "8. Caveats\n\nMCAR/MAR/MNAR are statements about the joint full-data/observation process; observed data alone cannot distinguish MAR from MNAR.\nLikelihood ignorability under MAR also requires distinct parameters and correct outcome modeling. MI requires congenial imputation/analysis models and inclusion of predictors of missingness and outcome.\nLOCF treats an imputed value as known, distorts trajectories and covariance, and is generally unjustified except under a scientifically defensible constant-after-dropout estimand.\nStandard mice wide imputation is appropriate for a modest common visit grid; irregular or multilevel data may require two-level methods (2l.pan, 2l.norm) or joint modeling.\nOrdinary GEE is not generally valid under MAR dropout. IPW requires a correct observation model and positivity; weighted GEE scale and covariance defaults differ across R/SAS implementations.\nSelection and pattern-mixture models are not identified under MNAR without restrictions. Report sensitivity parameters (e.g., delta adjustment/tipping point), not a single unverifiable fit.\nEM maximizes the observed-data likelihood under its joint model; it does not by itself add between-imputation uncertainty or make an MNAR mechanism ignorable.\nSource-backed: taxonomy, likelihood ignorability, MI, IPW, selection/pattern-mixture models, and LOCF limitations follow the notes. Standard-practice addition: mice/geepack code is the native R implementation.",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  },
+  {
+    "objectID": "07-missing-data.html#source-references",
+    "href": "07-missing-data.html#source-references",
+    "title": "7. Missing longitudinal data",
+    "section": "9. Source references",
+    "text": "9. Source references\n\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-018-1.pdf, pp. 8–13, 21–36, 44–62, and 69–87 (mechanisms, likelihood, MI, weighting).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-019.pdf, pp. 4–18 and 24–45 (missing-data examples, MI and weighting).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/missing_data_writeup.pdf, pp. 1–8 (likelihood ignorability under MCAR/MAR/MNAR).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf, pp. 1–22; /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.1 - Missing_Data_2.pdf, pp. 1–19 (mechanisms and selection models).\n/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.2 - Missing_Data_3.pdf, pp. 1–12 (pattern-mixture models); /Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.3 - Missing_Data_4.pdf, pp. 1–25 (weighted GEE).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW4/PROGRAMS_HW4/02-HW4-Descriptive-Analysis.sas, lines 26–44 (patterns and dropout prediction).\n/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-004.pdf, pp. 4–33 (missing longitudinal data and EM algorithm).",
+    "crumbs": [
+      "Core chapters",
+      "7. Missing longitudinal data"
+    ]
+  }
+]
