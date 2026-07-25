@@ -1,9 +1,12 @@
 project:
   type: website
   output-dir: _site
+  execute-dir: project
   render:
     - "*.qmd"
+    - "analysis-in-r/*.qmd"
     - "math-writeups/*.qmd"
+    - "references/*.qmd"
 
 website:
   title: "Longitudinal Data Analysis in R"
@@ -17,14 +20,14 @@ website:
         href: index.qmd
       - section: "Analysis in R"
         contents:
-          - 01-eda-descriptive.qmd
-          - 02-rm-anova-manova.qmd
-          - 03-linear-mixed-models.qmd
-          - 04-marginal-models-gee.qmd
-          - 05-glm-review.qmd
-          - 06-glmm.qmd
-          - 07-missing-data.qmd
-          - 08-multivariate-testing-pca.qmd
+          - analysis-in-r/01-eda-descriptive.qmd
+          - analysis-in-r/02-rm-anova-manova.qmd
+          - analysis-in-r/03-linear-mixed-models.qmd
+          - analysis-in-r/04-marginal-models-gee.qmd
+          - analysis-in-r/05-glm-review.qmd
+          - analysis-in-r/06-glmm.qmd
+          - analysis-in-r/07-missing-data.qmd
+          - analysis-in-r/08-multivariate-testing-pca.qmd
       - section: "Accompanying Mathematics"
         contents:
           - math-writeups/00-index.qmd
@@ -43,9 +46,9 @@ website:
           - math-writeups/13-sample-size-power.qmd
       - section: "Reference"
         contents:
-          - A1-inference-diagnostics.qmd
-          - A2-interpretation-cheatsheet.qmd
-          - A3-packages.qmd
+          - references/A1-inference-diagnostics.qmd
+          - references/A2-interpretation-cheatsheet.qmd
+          - references/A3-packages.qmd
 
 format:
   html:

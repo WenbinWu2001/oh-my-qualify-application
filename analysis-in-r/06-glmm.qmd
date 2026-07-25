@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companions"}
-[GLMMs and multilevel models](math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Ordinal, nominal, and joint models](math-writeups/09-ordinal-nominal-joint-models.qmd) · [Transition models](math-writeups/11-transition-models.qmd)
+[GLMMs and multilevel models](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Ordinal, nominal, and joint models](../math-writeups/09-ordinal-nominal-joint-models.qmd) · [Transition models](../math-writeups/11-transition-models.qmd)
 :::
 
 ```{r}

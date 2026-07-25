@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companions"}
-[Math-writeup catalogue](math-writeups/00-index.qmd) · [Gaussian marginal models](math-writeups/03-gaussian-marginal-models.qmd) · [LMMs](math-writeups/04-linear-mixed-models.qmd) · [GEE](math-writeups/07-marginal-models-gee.qmd) · [GLMMs](math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Transition models](math-writeups/11-transition-models.qmd)
+[Math-writeup catalogue](../math-writeups/00-index.qmd) · [Gaussian marginal models](../math-writeups/03-gaussian-marginal-models.qmd) · [LMMs](../math-writeups/04-linear-mixed-models.qmd) · [GEE](../math-writeups/07-marginal-models-gee.qmd) · [GLMMs](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Transition models](../math-writeups/11-transition-models.qmd)
 :::
 
 ```{r}

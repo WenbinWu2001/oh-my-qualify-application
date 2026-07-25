@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companions"}
-[Generalized linear models](math-writeups/06-generalized-linear-models.qmd) · [Marginal models and GEE](math-writeups/07-marginal-models-gee.qmd) · [GLMMs and multilevel models](math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Ordinal and nominal models](math-writeups/09-ordinal-nominal-joint-models.qmd)
+[Generalized linear models](../math-writeups/06-generalized-linear-models.qmd) · [Marginal models and GEE](../math-writeups/07-marginal-models-gee.qmd) · [GLMMs and multilevel models](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Ordinal and nominal models](../math-writeups/09-ordinal-nominal-joint-models.qmd)
 :::
 
 ```{r}

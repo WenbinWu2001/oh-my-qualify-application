@@ -25,19 +25,19 @@ The parameter $\beta$ governs the mean model. Parameters $\theta$, $\alpha$, $D$
 
 | Mathematical writeup | Main content | Code companions |
 |---|---|---|
-| [Foundations: MVN, ML, REML, and GLS](01-foundations-mvn-ml-reml.qmd) | Multivariate normal theory, GLS/WLS, sandwich covariance, ML/REML | [EDA](../01-eda-descriptive.qmd), [Gaussian/LMM](../03-linear-mixed-models.qmd), [multivariate methods](../08-multivariate-testing-pca.qmd) |
-| [Repeated-measures ANOVA and MANOVA](02-repeated-measures-anova-manova.qmd) | Sphericity, profile hypotheses, multivariate tests | [RM-ANOVA/MANOVA](../02-rm-anova-manova.qmd) |
-| [Gaussian marginal models](03-gaussian-marginal-models.qmd) | Response profiles, time trends, splines, covariance structures, model selection | [Gaussian/LMM](../03-linear-mixed-models.qmd) |
-| [Linear mixed models](04-linear-mixed-models.qmd) | Random effects, variance components, BLUPs, ML/REML, boundary tests | [Gaussian/LMM](../03-linear-mixed-models.qmd) |
-| [Inference and diagnostics](05-inference-diagnostics.qmd) | Wald/LRT rules, small-sample inference, residuals, influence | [Inference/diagnostics](../A1-inference-diagnostics.qmd) |
-| [Generalized linear models](06-generalized-linear-models.qmd) | Exponential family, links, likelihood, deviance, quasi-likelihood | [GLM review](../05-glm-review.qmd) |
-| [Marginal models and GEE](07-marginal-models-gee.qmd) | Population-averaged models, estimating equations, sandwich covariance, QIC | [GEE](../04-marginal-models-gee.qmd) |
-| [GLMMs and multilevel models](08-generalized-linear-mixed-multilevel.qmd) | Subject-specific models, integrated likelihood, quadrature, ICC, offsets | [GLMM](../06-glmm.qmd) |
-| [Ordinal, nominal, and joint models](09-ordinal-nominal-joint-models.qmd) | Proportional odds, generalized logits, shared random effects | [GLM review](../05-glm-review.qmd), [GLMM](../06-glmm.qmd) |
-| [Missing longitudinal data](10-missing-data.qmd) | MCAR/MAR/MNAR, ignorability, EM, MI, IPW-GEE, sensitivity models | [Missing data](../07-missing-data.qmd) |
-| [Transition models](11-transition-models.qmd) | Markov regression, conditional likelihood, lag interactions | [GEE](../04-marginal-models-gee.qmd), [GLMM](../06-glmm.qmd) |
-| [Time-varying covariates](12-time-varying-covariates.qmd) | Exogeneity, endogenous covariates, distributed lags, causal warning | [GEE](../04-marginal-models-gee.qmd) |
-| [Sample size and power](13-sample-size-power.qmd) | Linear-slope design formula and simulation-based power | [RM-ANOVA/MANOVA](../02-rm-anova-manova.qmd), [Gaussian/LMM](../03-linear-mixed-models.qmd) |
+| [Foundations: MVN, ML, REML, and GLS](01-foundations-mvn-ml-reml.qmd) | Multivariate normal theory, GLS/WLS, sandwich covariance, ML/REML | [EDA](../analysis-in-r/01-eda-descriptive.qmd), [Gaussian/LMM](../analysis-in-r/03-linear-mixed-models.qmd), [multivariate methods](../analysis-in-r/08-multivariate-testing-pca.qmd) |
+| [Repeated-measures ANOVA and MANOVA](02-repeated-measures-anova-manova.qmd) | Sphericity, profile hypotheses, multivariate tests | [RM-ANOVA/MANOVA](../analysis-in-r/02-rm-anova-manova.qmd) |
+| [Gaussian marginal models](03-gaussian-marginal-models.qmd) | Response profiles, time trends, splines, covariance structures, model selection | [Gaussian/LMM](../analysis-in-r/03-linear-mixed-models.qmd) |
+| [Linear mixed models](04-linear-mixed-models.qmd) | Random effects, variance components, BLUPs, ML/REML, boundary tests | [Gaussian/LMM](../analysis-in-r/03-linear-mixed-models.qmd) |
+| [Inference and diagnostics](05-inference-diagnostics.qmd) | Wald/LRT rules, small-sample inference, residuals, influence | [Inference/diagnostics](../references/A1-inference-diagnostics.qmd) |
+| [Generalized linear models](06-generalized-linear-models.qmd) | Exponential family, links, likelihood, deviance, quasi-likelihood | [GLM review](../analysis-in-r/05-glm-review.qmd) |
+| [Marginal models and GEE](07-marginal-models-gee.qmd) | Population-averaged models, estimating equations, sandwich covariance, QIC | [GEE](../analysis-in-r/04-marginal-models-gee.qmd) |
+| [GLMMs and multilevel models](08-generalized-linear-mixed-multilevel.qmd) | Subject-specific models, integrated likelihood, quadrature, ICC, offsets | [GLMM](../analysis-in-r/06-glmm.qmd) |
+| [Ordinal, nominal, and joint models](09-ordinal-nominal-joint-models.qmd) | Proportional odds, generalized logits, shared random effects | [GLM review](../analysis-in-r/05-glm-review.qmd), [GLMM](../analysis-in-r/06-glmm.qmd) |
+| [Missing longitudinal data](10-missing-data.qmd) | MCAR/MAR/MNAR, ignorability, EM, MI, IPW-GEE, sensitivity models | [Missing data](../analysis-in-r/07-missing-data.qmd) |
+| [Transition models](11-transition-models.qmd) | Markov regression, conditional likelihood, lag interactions | [GEE](../analysis-in-r/04-marginal-models-gee.qmd), [GLMM](../analysis-in-r/06-glmm.qmd) |
+| [Time-varying covariates](12-time-varying-covariates.qmd) | Exogeneity, endogenous covariates, distributed lags, causal warning | [GEE](../analysis-in-r/04-marginal-models-gee.qmd) |
+| [Sample size and power](13-sample-size-power.qmd) | Linear-slope design formula and simulation-based power | [RM-ANOVA/MANOVA](../analysis-in-r/02-rm-anova-manova.qmd), [Gaussian/LMM](../analysis-in-r/03-linear-mixed-models.qmd) |
 
 ## Model-selection decision
 

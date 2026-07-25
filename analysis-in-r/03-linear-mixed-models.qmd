@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companions"}
-[MVN, ML, REML, and GLS](math-writeups/01-foundations-mvn-ml-reml.qmd) · [Gaussian mean and covariance models](math-writeups/03-gaussian-marginal-models.qmd) · [Linear mixed models](math-writeups/04-linear-mixed-models.qmd) · [Inference and diagnostics](math-writeups/05-inference-diagnostics.qmd) · [Sample size and power](math-writeups/13-sample-size-power.qmd)
+[MVN, ML, REML, and GLS](../math-writeups/01-foundations-mvn-ml-reml.qmd) · [Gaussian mean and covariance models](../math-writeups/03-gaussian-marginal-models.qmd) · [Linear mixed models](../math-writeups/04-linear-mixed-models.qmd) · [Inference and diagnostics](../math-writeups/05-inference-diagnostics.qmd) · [Sample size and power](../math-writeups/13-sample-size-power.qmd)
 :::
 
 ```{r}

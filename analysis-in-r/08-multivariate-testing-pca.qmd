@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companions"}
-[Multivariate-normal foundations](math-writeups/01-foundations-mvn-ml-reml.qmd) · [Repeated-measures MANOVA](math-writeups/02-repeated-measures-anova-manova.qmd) · [Ordinal, nominal, and joint responses](math-writeups/09-ordinal-nominal-joint-models.qmd)
+[Multivariate-normal foundations](../math-writeups/01-foundations-mvn-ml-reml.qmd) · [Repeated-measures MANOVA](../math-writeups/02-repeated-measures-anova-manova.qmd) · [Ordinal, nominal, and joint responses](../math-writeups/09-ordinal-nominal-joint-models.qmd)
 :::
 
 ```{r}

@@ -10,7 +10,7 @@ execute:
 ---
 
 ::: {.callout-note title="Mathematical companion"}
-[Math-writeup catalogue: map each model family to its formulation, assumptions, and inference](math-writeups/00-index.qmd)
+[Math-writeup catalogue: map each model family to its formulation, assumptions, and inference](../math-writeups/00-index.qmd)
 :::
 
 ## 1. Aim

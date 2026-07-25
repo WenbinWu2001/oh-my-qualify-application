@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companion"}
-[Missing longitudinal data: mechanisms, likelihood, EM, MI, IPW, and MNAR sensitivity](math-writeups/10-missing-data.qmd)
+[Missing longitudinal data: mechanisms, likelihood, EM, MI, IPW, and MNAR sensitivity](../math-writeups/10-missing-data.qmd)
 :::
 
 ```{r}

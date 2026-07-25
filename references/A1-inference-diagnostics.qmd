@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companion"}
-[Inference and diagnostics](math-writeups/05-inference-diagnostics.qmd)
+[Inference and diagnostics](../math-writeups/05-inference-diagnostics.qmd)
 :::
 
 ```{r}

@@ -6,7 +6,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 
 ## Analysis in R
 
-### [01-eda-descriptive.qmd](01-eda-descriptive.qmd)
+### [01-eda-descriptive.qmd](analysis-in-r/01-eda-descriptive.qmd)
 
 - Individual spaghetti plots for heterogeneity, outliers, nonlinear trajectories, and irregular observation times.
 - Group-specific mean profiles with pointwise standard-error bands.
@@ -14,7 +14,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Empirical variograms for assessing dependence as a function of time lag.
 - Visit- and subject-level missing-data pattern displays.
 
-### [02-rm-anova-manova.qmd](02-rm-anova-manova.qmd)
+### [02-rm-anova-manova.qmd](analysis-in-r/02-rm-anova-manova.qmd)
 
 - Univariate repeated-measures ANOVA and the sphericity assumption.
 - Greenhouse–Geisser and Huynh–Feldt corrections.
@@ -22,7 +22,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Profile-analysis tests of parallelism, coincidence, and flatness.
 - `emmeans` interaction contrasts, joint tests, multiplicity adjustment, and repeated-measures power calculations.
 
-### [03-linear-mixed-models.qmd](03-linear-mixed-models.qmd)
+### [03-linear-mixed-models.qmd](analysis-in-r/03-linear-mixed-models.qmd)
 
 - Marginal Gaussian models with CS, AR(1), continuous-time AR(1), spatial, Toeplitz, and unstructured covariance.
 - Covariance and mean-model comparison using likelihood-ratio tests, AIC, and BIC.
@@ -32,7 +32,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Boundary-aware variance-component tests and singular-fit or convergence troubleshooting.
 - Nested, crossed, and nonlinear mixed-effects models.
 
-### [04-marginal-models-gee.qmd](04-marginal-models-gee.qmd)
+### [04-marginal-models-gee.qmd](analysis-in-r/04-marginal-models-gee.qmd)
 
 - Population-averaged mean models defined through generalized estimating equations.
 - Independence, exchangeable, AR(1), and unstructured working correlations.
@@ -41,7 +41,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Within-subject and between-subject decomposition of time-varying covariates.
 - Population-averaged GEE versus subject-specific GLMM interpretation and attenuation under nonlinear links.
 
-### [05-glm-review.qmd](05-glm-review.qmd)
+### [05-glm-review.qmd](analysis-in-r/05-glm-review.qmd)
 
 - Exponential-family distributions, mean–variance relationships, and link functions.
 - Logistic, Poisson, negative-binomial, and Gaussian regression specifications.
@@ -49,7 +49,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Pearson and deviance diagnostics for overdispersion.
 - Cumulative-link models for ordinal longitudinal responses.
 
-### [06-glmm.qmd](06-glmm.qmd)
+### [06-glmm.qmd](analysis-in-r/06-glmm.qmd)
 
 - Subject-specific generalized linear mixed models for binary and count responses.
 - Laplace and adaptive Gauss–Hermite quadrature approximations to the marginal likelihood.
@@ -58,7 +58,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - `glmmTMB` models for negative-binomial, zero-inflated, and offset-based analyses.
 - Transition models conditional on lagged response history.
 
-### [07-missing-data.qmd](07-missing-data.qmd)
+### [07-missing-data.qmd](analysis-in-r/07-missing-data.qmd)
 
 - MCAR, MAR, and MNAR observation mechanisms and their inferential implications.
 - Limitations of complete-case analysis and last observation carried forward.
@@ -66,7 +66,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Dropout-probability models, inverse-probability weighting, and weighted GEE.
 - Selection and pattern-mixture formulations for MNAR sensitivity analysis.
 
-### [08-multivariate-testing-pca.qmd](08-multivariate-testing-pca.qmd)
+### [08-multivariate-testing-pca.qmd](analysis-in-r/08-multivariate-testing-pca.qmd)
 
 - Hotelling and MANOVA tests for correlated multivariate response vectors.
 - PCA based on covariance or correlation matrices, including loadings, scores, and explained variance.
@@ -83,7 +83,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 
 ## Reference
 
-### [A1-inference-diagnostics.qmd](A1-inference-diagnostics.qmd)
+### [A1-inference-diagnostics.qmd](references/A1-inference-diagnostics.qmd)
 
 - ML/REML model-comparison rules, information criteria, and boundary-aware likelihood-ratio testing.
 - Marginal, conditional, Pearson, and deviance residuals.
@@ -91,7 +91,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Subject-level influence and Cook’s-distance diagnostics.
 - Residual variograms, overdispersion checks, singular-fit detection, and convergence assessment.
 
-### [A2-interpretation-cheatsheet.qmd](A2-interpretation-cheatsheet.qmd)
+### [A2-interpretation-cheatsheet.qmd](references/A2-interpretation-cheatsheet.qmd)
 
 - Population-averaged, subject-specific, and transition-model estimands.
 - GEE–GLMM attenuation relationships under logit, probit, and identity links.
@@ -99,7 +99,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Interaction effects, profile contrasts, estimable functions, and multiplicity-adjusted comparisons with `emmeans`.
 - Common interpretation traps involving nonlinear links, random effects, offsets, and prediction scales.
 
-### [A3-packages.qmd](A3-packages.qmd)
+### [A3-packages.qmd](references/A3-packages.qmd)
 
 - Visualization and data-management packages for longitudinal data.
 - Packages for repeated-measures ANOVA, LMMs, GEE, GLMMs, and nonlinear mixed models.

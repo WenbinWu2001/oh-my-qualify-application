@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companions"}
-[Marginal models and GEE](math-writeups/07-marginal-models-gee.qmd) · [Missing-data weighting](math-writeups/10-missing-data.qmd) · [Transition models](math-writeups/11-transition-models.qmd) · [Time-varying covariates](math-writeups/12-time-varying-covariates.qmd)
+[Marginal models and GEE](../math-writeups/07-marginal-models-gee.qmd) · [Missing-data weighting](../math-writeups/10-missing-data.qmd) · [Transition models](../math-writeups/11-transition-models.qmd) · [Time-varying covariates](../math-writeups/12-time-varying-covariates.qmd)
 :::
 
 ```{r}

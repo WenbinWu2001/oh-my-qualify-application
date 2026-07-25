@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companions"}
-[Repeated-measures ANOVA and MANOVA](math-writeups/02-repeated-measures-anova-manova.qmd) · [Sample size and power](math-writeups/13-sample-size-power.qmd)
+[Repeated-measures ANOVA and MANOVA](../math-writeups/02-repeated-measures-anova-manova.qmd) · [Sample size and power](../math-writeups/13-sample-size-power.qmd)
 :::
 
 ```{r}

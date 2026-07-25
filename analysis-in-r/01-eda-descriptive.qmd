@@ -5,7 +5,7 @@ execute: {echo: true, warning: false, message: false}
 ---
 
 ::: {.callout-note title="Mathematical companions"}
-[MVN, covariance, and GLS foundations](math-writeups/01-foundations-mvn-ml-reml.qmd) · [Gaussian mean and covariance models](math-writeups/03-gaussian-marginal-models.qmd) · [Missing-data mechanisms](math-writeups/10-missing-data.qmd)
+[MVN, covariance, and GLS foundations](../math-writeups/01-foundations-mvn-ml-reml.qmd) · [Gaussian mean and covariance models](../math-writeups/03-gaussian-marginal-models.qmd) · [Missing-data mechanisms](../math-writeups/10-missing-data.qmd)
 :::
 
 ```{r}
