@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companions"}
+[Marginal models and GEE](math-writeups/07-marginal-models-gee.qmd) · [Missing-data weighting](math-writeups/10-missing-data.qmd) · [Transition models](math-writeups/11-transition-models.qmd) · [Time-varying covariates](math-writeups/12-time-varying-covariates.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -158,10 +162,7 @@ Check subject sorting, unique subject-wave keys, cluster-size distribution, leve
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf`, pp. 39--52, 62--68, and 77--80 (GEE, sandwich/model-based covariance, working correlation, QIC).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.1 - GEE_1.pdf`, pp. 8--19 (estimating equation and working covariance); `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.2 - GEE_2.pdf`, pp. 1--7 and 10--19 (association and scale estimation).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.3 - GEE_3.pdf`, pp. 1--9 (robust Wald/score inference).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf`, pp. 5--13 (marginalization and attenuation formula).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Kaicheng/Assignment6/Marginal Model.r`, lines 35--184 (R working-correlation fits, robust/naive SEs, alpha, odds ratios, Wald tests).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/HW3/STAT571-HW3-WenbinWu-Code.Rmd`, GEE code chunks (independence/exchangeable comparisons and simulation).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-021.pdf`, pp. 3--37 (time-varying covariates and lagged exposure models).
+- `BIOS-767-Part-014.pdf`, pp. 39--52, 62--68, and 77--80 (GEE, sandwich/model-based covariance, working correlation, QIC).
+- UW STAT571 (estimating equations, working covariance, association and scale estimation, robust inference, marginalization, attenuation, and GEE code examples).
+- BIOS767 Homework 6 (working-correlation fits, robust/naive SEs, alpha, odds ratios, and Wald tests).
+- `BIOS-767-Part-021.pdf`, pp. 3--37 (time-varying covariates and lagged exposure models).

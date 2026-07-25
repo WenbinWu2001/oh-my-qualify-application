@@ -1,0 +1,148 @@
+---
+title: "8. Generalized linear mixed and multilevel models"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-001.pdf`, slides 43-47; `BIOS-767-Part-014.pdf`, slides 10-36; `BIOS-767-Part-015.pdf`, slides 4-63; `BIOS-767-Part-016.pdf`, slides 4-23; `BIOS-767-Part-022.pdf`, slides 25-34.
+
+## Motivation and estimand
+
+A GLMM introduces latent random effects into a GLM to represent cluster heterogeneity. Its regression parameters are conditional, subject-specific or cluster-specific effects.
+
+## Model
+
+Conditional on $b_i$,
+
+$$
+Y_{ij}\mid b_i\ \sim\ \text{exponential family},\qquad
+g(\mu_{ij}^{c})=x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb_i+o_{ij},
+$$
+
+where
+
+$$
+\mu_{ij}^{c}=E(Y_{ij}\mid b_i),\qquad
+b_i\stackrel{\mathrm{iid}}{\sim}N_q(0,D).
+$$
+
+The responses $Y_{i1},\ldots,Y_{in_i}$ are conditionally independent given $b_i$, unless an additional conditional residual structure is specified. The term $o_{ij}$ is a known offset. *Slide source: `BIOS-767-Part-015.pdf`, slides 12-14.*
+
+### Binary random-intercept model
+
+$$
+\operatorname{logit}\{P(Y_{ij}=1\mid b_i)\}
+=x_{ij}^\mathsf T\beta+b_i,\qquad b_i\sim N(0,\sigma_b^2).
+$$
+
+Holding $b_i$ fixed, $e^{\beta_k}$ is the odds ratio for two covariate values in the same latent-risk stratum. It is not a population-averaged odds ratio. *Slide source: `BIOS-767-Part-015.pdf`, slides 15-19 and 37-39.*
+
+Using the latent-logistic representation with residual variance $\pi^2/3$, the latent-scale ICC is
+
+$$
+\mathrm{ICC}_{\mathrm{latent}}
+=\frac{\sigma_b^2}{\sigma_b^2+\pi^2/3}.
+$$
+
+For a probit random-intercept model, the residual latent variance is $1$, giving $\sigma_b^2/(\sigma_b^2+1)$. These are latent-scale summaries, not ordinary Pearson correlations between binary observations. *Slide source: `BIOS-767-Part-015.pdf`, slides 25-31.*
+
+### Count/rate model
+
+$$
+Y_{ij}\mid b_i\sim\operatorname{Poisson}(\mu_{ij}^{c}),\qquad
+\log\mu_{ij}^{c}=x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb_i+\log e_{ij}.
+$$
+
+Then $e^{\beta_k}$ is a conditional rate ratio at fixed $b_i$. Negative-binomial or observation-level random effects can represent extra-Poisson variation; zero-inflated or hurdle components represent structurally distinct zero processes.
+
+## Marginal versus conditional mean
+
+The marginal mean integrates over the random effects:
+
+$$
+E(Y_{ij}\mid X_{ij})
+=\int g^{-1}(x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb)
+\phi_q(b;0,D)\,db.
+$$
+
+For nonlinear $g$,
+
+$$
+g\{E(Y_{ij}\mid X_{ij})\}\ne x_{ij}^\mathsf T\beta
+$$
+
+in general. For a logistic random-intercept model, the course approximation is
+
+$$
+\beta_{\mathrm{PA}}
+\approx(1+0.346\,\sigma_b^2)^{-1/2}\beta_{\mathrm{SS}},
+$$
+
+so conditional log-odds coefficients tend to be farther from zero than marginal coefficients. This is an approximation, not a conversion identity. *Slide source: `BIOS-767-Part-014.pdf`, slides 27-36; `BIOS-767-Part-015.pdf`, slides 17-19.*
+
+## Marginal likelihood and estimation
+
+The subject contribution is
+
+$$
+L_i(\beta,D)=
+\int
+\left\{\prod_{j=1}^{n_i}f(y_{ij}\mid b_i;\beta)\right\}
+\phi_q(b_i;0,D)\,db_i,
+$$
+
+and $L=\prod_iL_i$. Except in special cases, the integral has no closed form. *Slide source: `BIOS-767-Part-015.pdf`, slides 20-23.*
+
+Common approximations are:
+
+- Laplace: second-order expansion around the posterior mode; one adaptive quadrature point in common software.
+- Adaptive Gauss-Hermite quadrature: weighted evaluation around the subject-specific mode; accuracy increases with nodes but cost grows rapidly with $q$.
+- Penalized quasi-likelihood (PQL): linearizes the mean; computationally convenient but can be biased for binary data with small cluster sizes or large variance.
+
+Check stability across quadrature accuracy when feasible. *Slide source: `BIOS-767-Part-015.pdf`, slides 22-24 and 58-63.*
+
+## Random effects and inference
+
+Empirical-Bayes predictions use
+
+$$
+\widehat b_i\approx E(b_i\mid Y_i;\widehat\beta,\widehat D),
+$$
+
+computed from the approximate conditional posterior. They are shrinkage predictions and inherit assumptions about $D$. Fixed-effect Wald/LRT inference also inherits numerical-integration accuracy. Variance-component tests are boundary problems; a parametric bootstrap is often safer than an ordinary $\chi^2$ LRT.
+
+## Multilevel extension
+
+For level-1 unit $i$ nested in level-2 cluster $j$,
+
+$$
+g\{E(Y_{ij}\mid b_j)\}=x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb_j,
+\qquad b_j\sim N(0,D).
+$$
+
+This is the same mathematical structure as a longitudinal GLMM; only the source of clustering changes. It partially pools cluster-specific effects between complete pooling and separate cluster models. *Slide source: `BIOS-767-Part-016.pdf`, slides 9-12.*
+
+For a Poisson rate with expected count/exposure $T_{ij}$,
+
+$$
+\log E(Y_{ij}\mid b_j)
+=\log T_{ij}+\beta_0+\beta_1x_{ij}+b_j.
+$$
+
+The offset makes $e^{\beta_1}$ a conditional rate ratio rather than a raw-count ratio. *Slide source: `BIOS-767-Part-016.pdf`, slides 14-21.*
+
+## Interpretation
+
+- Binary: $e^{\beta_k}$ is a conditional odds ratio at the same random-effect value.
+- Count: $e^{\beta_k}$ is a conditional rate ratio at the same random-effect value and exposure scale.
+- $\operatorname{Var}(b_i)$ measures unexplained latent heterogeneity, conditional on included covariates.
+- A subject-specific treatment coefficient for a between-subject treatment depends on the assumed random-effect distribution because treatment does not vary within subject.
+
+*Slide source: `BIOS-767-Part-022.pdf`, slides 31-34.*
+
+## When to apply
+
+Use a GLMM when conditional effects, latent heterogeneity, cluster-specific prediction, multilevel pooling, or a full likelihood are central. Use GEE when the population-average mean is the target and subject-specific prediction is unnecessary.
+
+## External cross-check
+
+The conditional-independence GLMM and Laplace/PQL framework agrees with [Breslow and Clayton (1993)](https://doi.org/10.1080/01621459.1993.10594284). The marginal/subject-specific distinction agrees with [Zeger, Liang, and Albert (1988)](https://pubmed.ncbi.nlm.nih.gov/3233245/).

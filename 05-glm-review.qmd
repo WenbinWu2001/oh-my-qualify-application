@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companions"}
+[Generalized linear models](math-writeups/06-generalized-linear-models.qmd) · [Marginal models and GEE](math-writeups/07-marginal-models-gee.qmd) · [GLMMs and multilevel models](math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Ordinal and nominal models](math-writeups/09-ordinal-nominal-joint-models.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -128,8 +132,7 @@ Assess link/mean misspecification, residual dispersion, influential observations
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-013.pdf`, pp. 4--21, 26--37, and 60--68 (GLM families, links, inference, fit assessment).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.0 - GLM_Review.pdf`, pp. 1--15 and 19--24 (exponential family, IRLS/inference, overdispersion).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/supplements/GEE_notes.pdf`, pp. 1--5 (quasi-likelihood and overdispersion).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Kaicheng/Assignment3/GLM-fitting and inference.r`, lines 1--169 (R mean model, robust/model-based extraction, joint Wald tests).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-017.pdf`, pp. 2--26 (ordinal, multinomial, and mixed response types).
+- `BIOS-767-Part-013.pdf`, pp. 4--21, 26--37, and 60--68 (GLM families, links, inference, fit assessment).
+- UW STAT571 (exponential-family models, IRLS/inference, quasi-likelihood, and overdispersion).
+- BIOS767 Homework 3 (mean models, robust/model-based extraction, and joint Wald tests).
+- `BIOS-767-Part-017.pdf`, pp. 2--26 (ordinal, multinomial, and mixed response types).

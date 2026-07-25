@@ -1,0 +1,145 @@
+---
+title: "6. Generalized linear models"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-013.pdf`, slides 4-69; `BIOS-767-Part-014.pdf`, slides 4-43.
+
+## Motivation
+
+A GLM specifies the response distribution, linear predictor, and link. It is the mean-model building block for GEE and GLMM. A pooled GLM does not by itself account for repeated-measure dependence.
+
+## Exponential-family formulation
+
+For independent $Y_i$,
+
+$$
+f(y_i;\theta_i,\phi)=
+\exp\left\{
+\frac{w_i\{y_i\theta_i-b(\theta_i)\}}{\phi}
++c(y_i,\phi,w_i)
+\right\}.
+$$
+
+Then
+
+$$
+\mu_i=E(Y_i)=b'(\theta_i),\qquad
+\operatorname{Var}(Y_i)=\frac{\phi}{w_i}b''(\theta_i)
+=\frac{\phi}{w_i}v(\mu_i).
+$$
+
+The systematic component is
+
+$$
+\eta_i=x_i^\mathsf T\beta,\qquad
+g(\mu_i)=\eta_i,\qquad
+\mu_i=g^{-1}(x_i^\mathsf T\beta).
+$$
+
+If $g(\mu_i)=\theta_i$, the link is canonical. *Slide source: `BIOS-767-Part-013.pdf`, slides 16-35.*
+
+## Core outcome models
+
+### Binary
+
+$$
+Y_i\sim\operatorname{Bernoulli}(\pi_i),\qquad
+\log\frac{\pi_i}{1-\pi_i}=x_i^\mathsf T\beta.
+$$
+
+For a one-unit increase in $x_k$, holding other covariates fixed,
+
+$$
+\frac{\operatorname{odds}(Y=1\mid x_k+1)}
+{\operatorname{odds}(Y=1\mid x_k)}
+=e^{\beta_k}.
+$$
+
+### Count and rate
+
+$$
+Y_i\sim\operatorname{Poisson}(\mu_i),\qquad
+\log\mu_i=x_i^\mathsf T\beta+\log e_i,
+$$
+
+where $e_i$ is exposure. Therefore $e^{\beta_k}$ is a rate ratio. The Poisson condition $\operatorname{Var}(Y_i)=\mu_i$ may be relaxed through quasi-Poisson $\operatorname{Var}(Y_i)=\phi\mu_i$ or a negative-binomial mean-variance relation. *Slide source: `BIOS-767-Part-013.pdf`, slides 20-35 and 66-69.*
+
+### Gaussian
+
+$$
+Y_i\sim N(\mu_i,\sigma^2),\qquad
+\mu_i=x_i^\mathsf T\beta.
+$$
+
+This is the identity-link special case.
+
+## Estimation
+
+The score can be written
+
+$$
+U(\beta)=
+\sum_i
+\left(\frac{\partial\mu_i}{\partial\beta}\right)^\mathsf T
+\operatorname{Var}(Y_i)^{-1}(Y_i-\mu_i).
+$$
+
+For the canonical link this is proportional to $\sum_i x_i(Y_i-\mu_i)$. Newton-Raphson/Fisher scoring yields iteratively reweighted least squares. The asymptotic covariance is
+
+$$
+\operatorname{Var}(\widehat\beta)\approx
+\left[
+\sum_i
+\left(\frac{\partial\mu_i}{\partial\beta}\right)^\mathsf T
+\operatorname{Var}(Y_i)^{-1}
+\left(\frac{\partial\mu_i}{\partial\beta}\right)
+\right]^{-1}.
+$$
+
+*Slide source: `BIOS-767-Part-013.pdf`, slides 36-43. The score derivation is on slides 37-41.*
+
+## Deviance and inference
+
+The residual deviance compares the fitted model with the saturated model:
+
+$$
+D(y;\widehat\mu)=
+2\{\ell(y;y,\widehat\phi)-\ell(\widehat\mu;y,\widehat\phi)\}.
+$$
+
+For nested $M_0\subset M_1$ with known dispersion,
+
+$$
+D_0-D_1=2(\ell_1-\ell_0)
+\ \dot\sim\ \chi_{p_1-p_0}^2.
+$$
+
+The difference-of-deviance approximation is generally more reliable than treating a single residual deviance as $\chi^2_{N-p}$. Wald inference uses the estimated information. *Slide source: `BIOS-767-Part-013.pdf`, slides 44-64.*
+
+The Pearson dispersion statistic is
+
+$$
+\widehat\phi_P=
+\frac{\sum_i(Y_i-\widehat\mu_i)^2/v(\widehat\mu_i)}{N-p}.
+$$
+
+Large values under Poisson/binomial sampling indicate overdispersion, but can also reflect a misspecified mean, omitted dependence, zero inflation, or outliers.
+
+## Quasi-likelihood
+
+If only $E(Y_i)=\mu_i$ and $\operatorname{Var}(Y_i)=\phi v(\mu_i)$ are specified, solve the same quasi-score $U(\beta)=0$. The resulting estimator does not require a full outcome distribution, but likelihood quantities such as AIC and ordinary LRTs are unavailable. *Slide source: `BIOS-767-Part-013.pdf`, slides 66-69.*
+
+## Longitudinal interpretation
+
+A pooled GLM coefficient has the intended mean-model interpretation but an independence-based standard error is generally invalid for repeated outcomes. Embed the mean model in:
+
+- GEE for population-averaged effects;
+- GLMM for subject-specific effects;
+- a transition model for effects conditional on response history.
+
+With nonlinear links, these parameters are not interchangeable. *Slide source: `BIOS-767-Part-014.pdf`, slides 10-43.*
+
+## When to apply
+
+Use a GLM directly for independent responses or as a benchmark. For clustered outcomes, use cluster-robust covariance only when the number of independent clusters is adequate, or use a longitudinal model that explicitly addresses association.

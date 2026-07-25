@@ -1,0 +1,122 @@
+---
+title: "9. Ordinal, nominal, and joint-response models"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-013.pdf`, slides 5-16; `BIOS-767-Part-017.pdf`, slides 2-48.
+
+## Motivation
+
+Collapsing a multi-category outcome to binary discards ordering or category-specific information. Ordinal models use cumulative probabilities; nominal models use category-specific logits. Joint models couple multiple response processes through shared latent variables.
+
+## Proportional-odds model
+
+Let $Y_{ij}\in\{1,\ldots,K\}$ with increasing category order and
+
+$$
+\gamma_{ijk}=P(Y_{ij}\le k\mid X_{ij}),\qquad k=1,\ldots,K-1.
+$$
+
+The marginal cumulative-logit model is
+
+$$
+\operatorname{logit}(\gamma_{ijk})=\alpha_k+x_{ij}^\mathsf T\beta,
+\qquad
+\alpha_1<\cdots<\alpha_{K-1}.
+$$
+
+The common $\beta$ across cut points is the proportional-odds assumption. With this sign convention, $e^{\beta_\ell}$ is the odds ratio for $Y\le k$ versus $Y>k$, common to every $k$. A positive coefficient shifts probability toward lower-coded categories. Some software uses $\alpha_k-x^\mathsf T\beta$; always check the implemented sign. *Slide source: `BIOS-767-Part-017.pdf`, slides 4-9.*
+
+Category probabilities follow from cumulative probabilities:
+
+$$
+\begin{aligned}
+P(Y=1)&=\gamma_1,\\
+P(Y=k)&=\gamma_k-\gamma_{k-1},\quad 2\le k\le K-1,\\
+P(Y=K)&=1-\gamma_{K-1}.
+\end{aligned}
+$$
+
+For longitudinal data, the model can be fitted marginally by an ordinal GEE or conditionally as
+
+$$
+\operatorname{logit}\{P(Y_{ij}\le k\mid b_i)\}
+=\alpha_k+x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb_i.
+$$
+
+The first $\beta$ is population-averaged; the second is subject-specific. *Slide source: `BIOS-767-Part-017.pdf`, slides 10-26.*
+
+## Partial proportional odds
+
+If only some covariates violate proportional odds, use
+
+$$
+\operatorname{logit}(\gamma_{ijk})
+=\alpha_k+x_{ij,A}^\mathsf T\beta_A+x_{ij,B}^\mathsf T\beta_{B,k}.
+$$
+
+This retains a common effect for $x_A$ while allowing threshold-specific effects for $x_B$. It is often preferable to discarding order entirely.
+
+## Nominal generalized-logit model
+
+Choose reference category $1$. For $k=2,\ldots,K$,
+
+$$
+\log\frac{P(Y_{ij}=k\mid X_{ij})}
+{P(Y_{ij}=1\mid X_{ij})}
+=\alpha_k+x_{ij}^\mathsf T\beta_k.
+$$
+
+Then $e^{\beta_{k\ell}}$ is the relative-risk ratio for category $k$ versus $1$ per unit increase in $x_\ell$. The model does not exploit ordering and estimates $(K-1)$ slope vectors. A random-intercept version replaces the right side by $\alpha_k+x_{ij}^\mathsf T\beta_k+\lambda_kb_i$. *Slide source: `BIOS-767-Part-017.pdf`, slides 27-39.*
+
+## Shared-random-effect joint model
+
+For two outcomes on possibly different scales,
+
+$$
+\begin{aligned}
+g_1\{E(Y_{ij1}\mid b_i)\}
+&=x_{ij1}^\mathsf T\beta_1+\lambda b_i,\\
+g_2\{E(Y_{ij2}\mid b_i)\}
+&=x_{ij2}^\mathsf T\beta_2+b_i,\\
+b_i&\sim N(0,\sigma_b^2).
+\end{aligned}
+$$
+
+Conditional independence is assumed across outcomes and times given $b_i$. The loading $\lambda$ aligns scales and determines the direction and magnitude of shared latent association. Identification requires fixing one loading or the random-effect variance scale. *Slide source: `BIOS-767-Part-017.pdf`, slides 40-48.*
+
+For mixed outcome types, each conditional distribution and link may differ. The integrated likelihood is
+
+$$
+L_i=\int
+\prod_j\prod_{r=1}^R
+f_r(y_{ijr}\mid b_i;\beta_r,\lambda_r)
+\phi(b_i;0,D)\,db_i.
+$$
+
+These models can be weakly identified and numerically difficult; examine convergence, starting values, loading constraints, and sensitivity to the random-effect distribution.
+
+## Estimation and inference
+
+- Marginal ordinal/nominal models: estimating equations with cluster-robust covariance.
+- Conditional models: integrated maximum likelihood using Laplace or adaptive quadrature.
+- Compare nested fixed-effect structures by Wald or likelihood-ratio tests as appropriate.
+- Assess proportional odds through prespecified threshold-specific interactions, score tests, or a partial proportional-odds model.
+- Compare nonnested ordinal/nominal likelihood models using AIC/BIC only when fitted to the same response coding and observations.
+
+## Interpretation
+
+Report the precise comparison encoded by the link:
+
+- cumulative odds: $Y\le k$ versus $Y>k$;
+- generalized-logit relative risk: category $k$ versus the reference category;
+- GLMM coefficient: comparison conditional on the same latent effect;
+- shared-effect loading: latent association scale, not a direct causal effect.
+
+## When to apply
+
+Use proportional odds when categories are ordered and a common cumulative effect is defensible. Use partial proportional odds for selective violations. Use generalized logits when ordering is absent or scientifically inappropriate. Use shared-random-effect models when several repeated outcomes are scientifically linked and their latent dependence is itself of interest.
+
+## External cross-check
+
+The cumulative-logit and proportional-odds formulation is cross-checked against McCullagh's primary paper, [Regression Models for Ordinal Data (1980)](https://people.csail.mit.edu/jrennie/papers/other/mccullagh-ordinal-80.pdf).

@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companions"}
+[MVN, ML, REML, and GLS](math-writeups/01-foundations-mvn-ml-reml.qmd) · [Gaussian mean and covariance models](math-writeups/03-gaussian-marginal-models.qmd) · [Linear mixed models](math-writeups/04-linear-mixed-models.qmd) · [Inference and diagnostics](math-writeups/05-inference-diagnostics.qmd) · [Sample size and power](math-writeups/13-sample-size-power.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -237,11 +241,10 @@ For singular or nonconvergent fits: rescale/center time, inspect observations pe
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-007.pdf`, pp. 5--31 and 50--61 (correlated Gaussian model, estimation, covariance structures).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/[Important] BIOS-767-Part-009.pdf`, pp. 4--18, 77--91, and 99--119 (mean/covariance selection; CS, AR, unstructured; ML/REML).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-010.pdf`, pp. 5--24, 40--58, and 62--73 (LMM, covariance decomposition, BLUPs, ICC).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-011.pdf`, pp. 4--25 and 42--54 (random-effect tests, boundary, fixed-effect inference, KR/Satterthwaite).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.0 - LMM_1.pdf`, pp. 2--16 and 27--32; `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.1 - LMM_2.pdf`, pp. 1--19 and 24--29 (LMM, BLUP, ML/REML, inference).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.3 - LMM_4.pdf`, pp. 1--16 (serial correlation and diagnostics); `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.4 - LMM_Review.pdf`, pp. 1--3 (boundary tests and review).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Fumin/767HW5.Rmd`, code chunk `data-prep` and diagnostic chunks (R random intercept/slope, BLUP, residual and influence code).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-016.pdf`, pp. 4--23 (multilevel/clustered models); `/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, p. 90 (nonlinear mixed models).
+- `BIOS-767-Part-007.pdf`, pp. 5--31 and 50--61 (correlated Gaussian model, estimation, covariance structures).
+- `BIOS-767-Part-009.pdf`, pp. 4--18, 77--91, and 99--119 (mean/covariance selection; CS, AR, unstructured; ML/REML).
+- `BIOS-767-Part-010.pdf`, pp. 5--24, 40--58, and 62--73 (LMM, covariance decomposition, BLUPs, ICC).
+- `BIOS-767-Part-011.pdf`, pp. 4--25 and 42--54 (random-effect tests, boundary, fixed-effect inference, KR/Satterthwaite).
+- UW STAT571 (LMM, BLUP, ML/REML, inference, serial correlation, diagnostics, and boundary tests).
+- BIOS767 Homework 5 (random intercept/slope, BLUP, residual, and influence code).
+- `BIOS-767-Part-016.pdf`, pp. 4--23 (multilevel/clustered models); `BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, p. 90 (nonlinear mixed models).

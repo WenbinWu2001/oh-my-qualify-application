@@ -9,6 +9,10 @@ execute:
   message: false
 ---
 
+::: {.callout-note title="Mathematical companion"}
+[Math-writeup catalogue: map each model family to its formulation, assumptions, and inference](math-writeups/00-index.qmd)
+:::
+
 ## 1. Aim
 
 This appendix maps common longitudinal-data tasks to idiomatic R packages. Package choice is driven by the estimand, response distribution, dependence model, and inferential target; no single package covers all combinations.
@@ -144,11 +148,8 @@ Before an exam or reproducible render, run the package audit and record `session
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 42--90 (mixed models, GEE/GLMM, interpretation, diagnostics).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-010.pdf`, pp. 5--73 (`PROC MIXED` functionality mapped to `nlme`/`lme4`).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf`, pp. 39--80 (GEE); `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-015.pdf`, pp. 5--61 (GLMM).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.0 - LMM_1.pdf` through `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.4 - LMM_Review.pdf` (LMM).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.1 - GEE_1.pdf` through `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/4.6 - GEE_6-Review.pdf` (GEE).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.0 - GLMM_1.pdf` through `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.4 - GLMM - Review.pdf` (GLMM).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf` through `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.4 - Missing_data - Recap.pdf` (missing data).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/` and `/Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/` — R package use in the audited `.R`/`.Rmd` files; SAS inference and covariance options are reproduced with native R in the topic chapters.
+- `BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 42--90 (mixed models, GEE/GLMM, interpretation, diagnostics).
+- `BIOS-767-Part-010.pdf`, pp. 5--73 (`PROC MIXED` functionality mapped to `nlme`/`lme4`).
+- `BIOS-767-Part-014.pdf`, pp. 39--80 (GEE); `BIOS-767-Part-015.pdf`, pp. 5--61 (GLMM).
+- UW STAT571 (LMM, GEE, GLMM, and missing-data package examples).
+- BIOS767 homework materials and UW STAT571 (R package use in course assignments; SAS inference and covariance options are reproduced with native R in the topic chapters).

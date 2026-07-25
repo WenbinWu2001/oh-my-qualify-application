@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companion"}
+[Missing longitudinal data: mechanisms, likelihood, EM, MI, IPW, and MNAR sensitivity](math-writeups/10-missing-data.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -208,10 +212,9 @@ For MI, inspect convergence, observed/imputed distributions, transformations, bo
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-018-1.pdf`, pp. 8--13, 21--36, 44--62, and 69--87 (mechanisms, likelihood, MI, weighting).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-019.pdf`, pp. 4--18 and 24--45 (missing-data examples, MI and weighting).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/missing_data_writeup.pdf`, pp. 1--8 (likelihood ignorability under MCAR/MAR/MNAR).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf`, pp. 1--22; `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.1 - Missing_Data_2.pdf`, pp. 1--19 (mechanisms and selection models).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.2 - Missing_Data_3.pdf`, pp. 1--12 (pattern-mixture models); `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.3 - Missing_Data_4.pdf`, pp. 1--25 (weighted GEE).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW4/PROGRAMS_HW4/02-HW4-Descriptive-Analysis.sas`, lines 26--44 (patterns and dropout prediction).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-004.pdf`, pp. 4--33 (missing longitudinal data and EM algorithm).
+- `BIOS-767-Part-018-1.pdf`, pp. 8--13, 21--36, 44--62, and 69--87 (mechanisms, likelihood, MI, weighting).
+- `BIOS-767-Part-019.pdf`, pp. 4--18 and 24--45 (missing-data examples, MI and weighting).
+- `missing_data_writeup.pdf`, pp. 1--8 (likelihood ignorability under MCAR/MAR/MNAR).
+- UW STAT571 (missingness mechanisms, selection and pattern-mixture models, and weighted GEE).
+- BIOS767 Homework 4 (patterns and dropout prediction).
+- `BIOS-767-Part-004.pdf`, pp. 4--33 (missing longitudinal data and EM algorithm).

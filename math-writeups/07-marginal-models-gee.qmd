@@ -1,0 +1,143 @@
+---
+title: "7. Marginal models and generalized estimating equations"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-001.pdf`, slides 43-45; `BIOS-767-Part-007.pdf`, slides 32-70; `BIOS-767-Part-014.pdf`, slides 4-128; `BIOS-767-Part-018-1.pdf`, slides 31-63; `BIOS-767-Part-019.pdf`, slides 7-19.
+
+## Motivation and estimand
+
+GEE estimates regression effects on the marginal population mean:
+
+$$
+g(\mu_{ij})=x_{ij}^\mathsf T\beta_{\mathrm{PA}},\qquad
+\mu_{ij}=E(Y_{ij}\mid X_{ij}).
+$$
+
+Association is treated separately through a working covariance. The primary estimand is $\beta_{\mathrm{PA}}$, not a latent subject effect. *Slide source: `BIOS-767-Part-014.pdf`, slides 37-47.*
+
+## Model setup
+
+Specify
+
+$$
+\operatorname{Var}(Y_{ij}\mid X_i)=\phi\,v(\mu_{ij}),
+$$
+
+and define
+
+$$
+A_i=\operatorname{diag}\{v(\mu_{i1}),\ldots,v(\mu_{in_i})\},
+$$
+
+$$
+V_i(\beta,\alpha,\phi)
+=\phi A_i^{1/2}R_i(\alpha)A_i^{1/2}.
+$$
+
+Common $R_i(\alpha)$ choices are independence, exchangeable, AR(1), and unstructured. $V_i$ is a working covariance; the full joint distribution of $Y_i$ need not be specified. *Slide source: `BIOS-767-Part-014.pdf`, slides 38-48.*
+
+## Estimation by generalized estimating equations
+
+Let
+
+$$
+D_i=\frac{\partial\mu_i}{\partial\beta^\mathsf T}.
+$$
+
+The GEE estimator solves
+
+$$
+U(\beta)=\sum_{i=1}^ND_i^\mathsf TV_i^{-1}(Y_i-\mu_i)=0.
+$$
+
+Because $V_i$ depends on $\beta,\alpha,\phi$, fitting alternates between solving $U(\beta)=0$ and estimating $\alpha,\phi$ from Pearson residuals. *Slide source: `BIOS-767-Part-014.pdf`, slides 49-61. The estimating-equation derivation is on slides 49-51.*
+
+## Covariance of $\widehat\beta$
+
+Define
+
+$$
+B=\sum_iD_i^\mathsf TV_i^{-1}D_i,
+$$
+
+$$
+M=\sum_iD_i^\mathsf TV_i^{-1}
+(Y_i-\widehat\mu_i)(Y_i-\widehat\mu_i)^\mathsf T
+V_i^{-1}D_i.
+$$
+
+The naive/model-based and robust/empirical covariances are
+
+$$
+\widehat{\operatorname{Var}}_{\mathrm{MB}}(\widehat\beta)=B^{-1},
+\qquad
+\widehat{\operatorname{Var}}_{\mathrm{rob}}(\widehat\beta)=B^{-1}MB^{-1}.
+$$
+
+If the marginal mean is correct and independent clusters satisfy regularity conditions, $\widehat\beta$ is consistent even when $R_i(\alpha)$ is misspecified; the sandwich covariance remains asymptotically valid. A better working correlation can improve efficiency. With few clusters, the uncorrected sandwich estimator can be downward biased; use a justified small-sample correction or cluster jackknife. *Slide source: `BIOS-767-Part-014.pdf`, slides 62-70.*
+
+## Association for binary outcomes
+
+Binary correlation is constrained by the marginal means. A pairwise odds ratio provides an alternative:
+
+$$
+\psi_{jk}=
+\frac{P(Y_j=1,Y_k=1)P(Y_j=0,Y_k=0)}
+{P(Y_j=1,Y_k=0)P(Y_j=0,Y_k=1)}.
+$$
+
+Given $\pi_j,\pi_k,\psi_{jk}$, solve for $a=P(Y_j=1,Y_k=1)$ from
+
+$$
+\psi_{jk}=
+\frac{a(1-\pi_j-\pi_k+a)}
+{(\pi_j-a)(\pi_k-a)},
+$$
+
+then obtain
+
+$$
+\rho_{jk}=
+\frac{a-\pi_j\pi_k}
+{\sqrt{\pi_j(1-\pi_j)\pi_k(1-\pi_k)}}.
+$$
+
+Thus a common pairwise odds ratio can imply subject-specific correlations that vary with the means. *Slide source: `BIOS-767-Part-014.pdf`, slides 94-105.*
+
+## Inference and model comparison
+
+For $H_0:C\beta=c$,
+
+$$
+W=(C\widehat\beta-c)^\mathsf T
+\{C\widehat{\operatorname{Var}}_{\mathrm{rob}}(\widehat\beta)C^\mathsf T\}^{-1}
+(C\widehat\beta-c)
+\ \dot\sim\ \chi_r^2.
+$$
+
+QIC is an AIC-like criterion based on the independence quasi-likelihood and a model-complexity penalty. Smaller QIC is preferred, but QIC is not a calibrated test and has weaker theoretical support than likelihood criteria. Compare correlations with a common mean model and means with a common correlation strategy. *Slide source: `BIOS-767-Part-014.pdf`, slides 77-80; `BIOS-767-Part-019.pdf`, slides 13-16.*
+
+## Interpretation
+
+For a marginal logistic model,
+
+$$
+\operatorname{logit}\{P(Y_{ij}=1\mid X_{ij})\}=x_{ij}^\mathsf T\beta,
+$$
+
+$e^{\beta_k}$ is a population-averaged odds ratio. For a marginal log-count model it is a population-averaged rate ratio. The working-correlation parameter does not change this interpretation.
+
+Do not interpret a GEE coefficient as subject-specific. Under a nonlinear link, $\beta_{\mathrm{PA}}\ne\beta_{\mathrm{SS}}$ in general. *Slide source: `BIOS-767-Part-014.pdf`, slides 20-36 and 38-43.*
+
+## Missingness assumptions
+
+Ordinary available-case GEE is generally valid under MCAR conditional on included covariates, but can be inconsistent under MAR because respondent means need not equal target means. IPW-GEE extends GEE to MAR under a correctly specified observation model; see [Missing longitudinal data](10-missing-data.qmd). *Slide source: `BIOS-767-Part-018-1.pdf`, slides 31-63.*
+
+## When to apply
+
+Use GEE when population-average effects are primary, clusters are independent, the number of clusters is adequate, and a full joint likelihood is unnecessary. Prefer likelihood-based models for small $N$, subject-specific prediction, or MAR dropout when an observation-weight model is not available.
+
+## External cross-check
+
+The estimating equation, working covariance, and sandwich covariance agree with [Liang and Zeger (1986)](https://doi.org/10.1093/biomet/73.1.13). The population-averaged versus subject-specific distinction agrees with [Zeger, Liang, and Albert (1988)](https://pubmed.ncbi.nlm.nih.gov/3233245/).

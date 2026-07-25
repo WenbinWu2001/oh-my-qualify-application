@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companions"}
+[MVN, covariance, and GLS foundations](math-writeups/01-foundations-mvn-ml-reml.qmd) · [Gaussian mean and covariance models](math-writeups/03-gaussian-marginal-models.qmd) · [Missing-data mechanisms](math-writeups/10-missing-data.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -143,10 +147,9 @@ Confirm subject-time uniqueness, ordering, visit support, and whether scheduled 
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-001.pdf`, pp. 14--22 (longitudinal organization and exploratory profiles).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/02-HW3-Data-Visualizations.sas`, lines 24--119 (spaghetti plots, mean profiles, timing variability).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Wenbin/Assignment1/2026-01-16_descriptive_stat.R`, lines 16--90 (R profiles and mean +/- SE).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-012.pdf`, pp. 26--30 (empirical variogram/residual correlation diagnostics).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-018-1.pdf`, pp. 8--13 and 24 (missingness patterns).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/7.0 - Missing_Data_1.pdf`, pp. 2--5 (dropout and intermittent patterns).
-
+- `BIOS-767-Part-001.pdf`, pp. 14--22 (longitudinal organization and exploratory profiles).
+- BIOS767 Homework 3 (spaghetti plots, mean profiles, and timing variability).
+- BIOS767 Homework 1 (R profiles and mean +/- SE).
+- `BIOS-767-Part-012.pdf`, pp. 26--30 (empirical variogram/residual correlation diagnostics).
+- `BIOS-767-Part-018-1.pdf`, pp. 8--13 and 24 (missingness patterns).
+- UW STAT571 (dropout and intermittent patterns).

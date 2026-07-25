@@ -1,0 +1,156 @@
+---
+title: "5. Inference and diagnostics"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-007.pdf`, slides 55-67; `BIOS-767-Part-008.pdf`, slides 15-26; `BIOS-767-Part-009.pdf`, slides 79-123; `BIOS-767-Part-011.pdf`, slides 4-54; `BIOS-767-Part-012.pdf`, slides 4-52; `Lecture-07-Part2.pdf`, document pp. 8-11; `anova-refitting.pdf`, document pp. 1-5.
+
+## Motivation
+
+Longitudinal inference depends on the independent sampling unit, covariance estimator, likelihood fit, and parameter-space geometry. Diagnostics must therefore assess whole response profiles and cluster influence, not only observation-level residuals.
+
+## Inferential targets
+
+Let $H_0:C\beta=c$ with $r=\operatorname{rank}(C)$. The estimand is the stated linear function, not the coefficient label alone.
+
+### Wald inference
+
+$$
+W=(C\widehat\beta-c)^\mathsf T
+\{C\widehat{\operatorname{Var}}(\widehat\beta)C^\mathsf T\}^{-1}
+(C\widehat\beta-c)
+\ \dot\sim\ \chi_r^2.
+$$
+
+For a scalar contrast,
+
+$$
+Z=\frac{c^\mathsf T\widehat\beta-c_0}
+{\sqrt{c^\mathsf T\widehat{\operatorname{Var}}(\widehat\beta)c}}
+\ \dot\sim\ N(0,1).
+$$
+
+Use the model-based covariance only when the covariance model is trusted. Use a cluster sandwich covariance for large-sample robustness to working-covariance misspecification. *Slide source: `BIOS-767-Part-007.pdf`, slides 55-60.*
+
+### Likelihood-ratio inference
+
+For nested regular models fit to the same outcome data,
+
+$$
+G^2=2\{\ell(\widehat\theta_{\mathrm{full}})
+-\ell(\widehat\theta_{\mathrm{reduced}})\}
+\ \dot\sim\ \chi_{\Delta q}^2.
+$$
+
+Use ML for fixed-effect comparisons. REML likelihoods are comparable for covariance structures only when $X$ is identical. Do not use an ordinary $\chi^2$ reference for a variance-zero boundary null. *Slide source: `BIOS-767-Part-009.pdf`, slides 79-88 and 111-118; `BIOS-767-Part-011.pdf`, slides 11-18.*
+
+### Small-sample LMM inference
+
+Satterthwaite approximates the denominator degrees of freedom from uncertainty in estimated variance components. Kenward-Roger adjusts $\widehat{\operatorname{Var}}(\widehat\beta)$, scales the Wald statistic, and uses an $F$ approximation. These address small-cluster bias; they do not repair mean or covariance misspecification. *Slide source: `BIOS-767-Part-011.pdf`, slides 49-54.*
+
+## Residuals
+
+### Gaussian marginal residuals
+
+Raw residual:
+
+$$
+r_i=Y_i-X_i\widehat\beta.
+$$
+
+If $\widehat V_i=L_iL_i^\mathsf T$ is a Cholesky factorization, the whitened residual is
+
+$$
+r_i^\star=L_i^{-1}r_i.
+$$
+
+Under a correct Gaussian mean and covariance, $r_i^\star$ is approximately uncorrelated with unit variance. Its $j$th component is a standardized innovation relative to the conditional mean given earlier ordered observations. Use residual-versus-fitted and Q-Q plots on $r_i^\star$, while remembering that estimation reduces exact independence. *Slide source: `BIOS-767-Part-012.pdf`, slides 8-14.*
+
+For an LMM:
+
+$$
+r_i^{(m)}=Y_i-X_i\widehat\beta,\qquad
+r_i^{(c)}=Y_i-X_i\widehat\beta-Z_i\widehat b_i.
+$$
+
+Marginal residuals assess the population mean plus total covariance. Conditional residuals assess remaining within-subject structure after fitted random effects. A residual variogram or lag plot of conditional residuals diagnoses serial dependence left in $R_i$.
+
+### GLM/GEE/GLMM residuals
+
+Pearson residual:
+
+$$
+r_{ij}^{P}=
+\frac{Y_{ij}-\widehat\mu_{ij}}
+{\sqrt{\widehat\phi\,v(\widehat\mu_{ij})}}.
+$$
+
+Deviance residual:
+
+$$
+r_{ij}^{D}=\operatorname{sign}(Y_{ij}-\widehat\mu_{ij})
+\sqrt{d(Y_{ij},\widehat\mu_{ij})}.
+$$
+
+For GLMMs, ordinary residuals are conditional on estimated random effects and can be highly discrete or nonnormal. Simulation-based residuals compare replicated responses from the fitted model to the observed response and are usually more interpretable.
+
+## Cluster-level outlyingness and influence
+
+### Mahalanobis distance
+
+$$
+d_i=r_i^\mathsf T\widehat V_i^{-1}r_i
+=(r_i^\star)^\mathsf Tr_i^\star
+\ \dot\sim\ \chi_{n_i}^2
+$$
+
+under the fitted Gaussian model. A large value identifies an unusual response vector, not necessarily an influential subject. *Slide source: `BIOS-767-Part-012.pdf`, slides 22-25.*
+
+### Deletion influence
+
+Let $\widehat\beta_{(-i)}$ denote the estimate after deleting subject $i$. A Cook-type distance is
+
+$$
+D_i=
+\frac{(\widehat\beta-\widehat\beta_{(-i)})^\mathsf T
+\widehat{\operatorname{Var}}(\widehat\beta)^{-1}
+(\widehat\beta-\widehat\beta_{(-i)})}
+{\operatorname{rank}(X)}.
+$$
+
+Multivariate DFFITS uses the externally estimated covariance $\widehat{\operatorname{Var}}\{\widehat\beta_{(-i)}\}$. The likelihood distance is
+
+$$
+\mathrm{LD}_i=2\{\ell(\widehat\theta)-\ell(\widehat\theta_{(-i)})\},
+$$
+
+evaluating the full-data likelihood at both parameter values. *Slide source: `BIOS-767-Part-012.pdf`, slides 27-40.*
+
+For prediction,
+
+$$
+e_{ij,(-i)}=Y_{ij}-x_{ij}^\mathsf T\widehat\beta_{(-i)},\qquad
+\mathrm{PRESS}_i=\sum_j e_{ij,(-i)}^2.
+$$
+
+Covariance-ratio and trace measures diagnose changes in precision even when coefficient displacement is small. *Slide source: `BIOS-767-Part-012.pdf`, slides 41-49.*
+
+## Model-class diagnostics
+
+| Component | Diagnostic question | Evidence |
+|---|---|---|
+| Mean/link | Is $E(Y\mid X)$ correctly parameterized? | Residual trends by fitted value, time, treatment, covariates |
+| Marginal variance | Is $v(\mu)$ or heteroscedasticity adequate? | Pearson residual spread; group/visit variance |
+| Serial covariance | Does dependence remain by lag? | Residual ACF/variogram; model-based versus robust SE |
+| Random effects | Is $D$ identifiable and needed? | Singular fit, boundary estimates, profile likelihood |
+| Distribution | Are Gaussian/tail/count assumptions adequate? | Q-Q or simulation residuals; zero and tail frequencies |
+| Influence | Does one cluster materially change inference? | Cluster deletion, Cook distance, DFBETAs |
+| Numerics | Is the optimizer solution credible? | Gradient, Hessian, convergence across optimizers/scalings |
+
+## Interpretation and action
+
+A diagnostic flag is evidence for investigation, not automatic deletion. Check data provenance, then conduct prespecified sensitivity analyses. Report whether substantive conclusions change. Simplify an overparameterized random/covariance structure only with reference to the estimand and design support.
+
+## When to apply
+
+Apply cluster-aware diagnostics to every longitudinal model. Observation-level diagnostics alone are insufficient because the independent sampling units are subjects or clusters.

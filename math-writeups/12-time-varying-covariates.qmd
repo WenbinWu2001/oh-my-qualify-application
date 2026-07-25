@@ -1,0 +1,128 @@
+---
+title: "12. Time-varying covariates"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-021.pdf`, slides 2-32; `BIOS-767-Part-022.pdf`, slides 33-34.
+
+## Motivation
+
+Time-varying covariates can describe within-person change, but stochastic covariates may respond to earlier outcomes. Then ordinary longitudinal regression coefficients need not have causal interpretations and can mix within- and between-subject associations.
+
+## Covariate types
+
+- Time-stationary: $X_{ij}=X_i$.
+- Systematic time-varying: determined by design, such as scheduled period or randomized crossover treatment.
+- Stochastic time-varying: evolves randomly, such as behavior, biomarker, or exposure.
+
+*Slide source: `BIOS-767-Part-021.pdf`, slides 3-10.*
+
+## Conditional-mean requirement
+
+A contemporaneous marginal model
+
+$$
+g\{E(Y_{ij}\mid X_{ij})\}=x_{ij}^\mathsf T\beta
+$$
+
+implicitly requires
+
+$$
+E(Y_{ij}\mid X_{i1},\ldots,X_{in_i})
+=E(Y_{ij}\mid X_{ij})
+$$
+
+or an appropriately specified history model. This is automatic for fixed-by-design covariates but may fail for stochastic covariates. *Slide source: `BIOS-767-Part-021.pdf`, slides 11-15.*
+
+An external/exogenous covariate satisfies
+
+$$
+f(X_{i,j+1}\mid X_{i1:j},Y_{i1:j})
+=f(X_{i,j+1}\mid X_{i1:j}).
+$$
+
+If future exposure responds to current outcome, the exposure is endogenous. Adjusting only for its current value can bias even associational mean parameters because the covariate history contains information about the response. *Slide source: `BIOS-767-Part-021.pdf`, slides 16-20.*
+
+## Within- and between-subject decomposition
+
+For a time-varying $X_{ij}$, define
+
+$$
+\bar X_i=\frac1{n_i}\sum_jX_{ij},\qquad
+X_{ij}^{W}=X_{ij}-\bar X_i.
+$$
+
+Fit
+
+$$
+g(\mu_{ij})
+=\beta_0+\beta_WX_{ij}^{W}+\beta_B\bar X_i+\cdots.
+$$
+
+Then:
+
+- $\beta_W$ is the within-subject association comparing occasions when the same subject is above versus below their own mean;
+- $\beta_B$ is the between-subject association comparing subjects with different average exposure.
+
+Without this decomposition, the single coefficient generally combines these components. This is an independent algebraic decomposition supporting the code companion; the BIOS767 slides emphasize exogeneity rather than this parameterization.
+
+Neither $\beta_W$ nor $\beta_B$ is automatically causal. Time-varying confounding affected by prior exposure requires g-methods.
+
+## Covariate histories and distributed lags
+
+For finite lag $L$,
+
+$$
+h(\mu_{it})=\beta_0+\sum_{\ell=1}^L\beta_\ell X_{i,t-\ell}.
+$$
+
+Directly estimating all $\beta_\ell$ can be unstable because nearby lags are highly correlated. Impose a lower-dimensional basis:
+
+$$
+\beta_\ell=z_\ell^\mathsf T\gamma,\qquad
+z_\ell=(1,\ell,\ldots,\ell^p)^\mathsf T,\quad p<L.
+$$
+
+Then
+
+$$
+h(\mu_{it})
+=\beta_0+
+\sum_{r=0}^p\gamma_rX_{it,r}^{\star},
+\qquad
+X_{it,r}^{\star}=\sum_{\ell=1}^Lz_{\ell r}X_{i,t-\ell}.
+$$
+
+The cumulative lag effect on the link scale is
+
+$$
+\sum_{\ell=1}^L\beta_\ell
+=\left(\sum_{\ell=1}^Lz_\ell\right)^\mathsf T\gamma.
+$$
+
+Polynomial or spline lag bases trade variance for structural bias; choose $L$ and basis complexity scientifically. *Slide source: `BIOS-767-Part-021.pdf`, slides 21-28.*
+
+## Time-varying confounding
+
+Suppose $L_{ij}$ predicts both future treatment $A_{i,j+1}$ and outcome, while prior $A$ affects $L_{ij}$. Then $L_{ij}$ is simultaneously a confounder and mediator. Standard regression:
+
+- omitting $L_{ij}$ leaves confounding;
+- conditioning on $L_{ij}$ blocks part of the treatment pathway and can induce additional bias.
+
+Methods targeting causal effects include marginal structural models with inverse-probability treatment weights, g-computation, structural nested models, and doubly robust estimators. *Slide source: `BIOS-767-Part-021.pdf`, slides 29-32.*
+
+## Estimation and inference
+
+- GEE estimates population-average associations under the specified history/exogeneity conditions.
+- GLMM estimates conditional associations at fixed random effects and covariate history.
+- Transition models explicitly condition on outcome history.
+- Distributed-lag coefficients are ordinary linear functions of $\gamma$; obtain their covariance by the delta method:
+
+  $$
+  \operatorname{Var}(a^\mathsf T\widehat\gamma)
+  =a^\mathsf T\widehat{\operatorname{Var}}(\widehat\gamma)a.
+  $$
+
+## Interpretation and when to apply
+
+Use contemporaneous covariates for descriptive association when timing and conditioning are explicit. Use within-between decomposition when those associations may differ. Use distributed lags when delayed exposure effects are plausible. Use causal g-methods when treatment/exposure and confounders evolve in response to prior outcomes or treatments.

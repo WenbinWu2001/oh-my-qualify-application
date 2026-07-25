@@ -3,9 +3,11 @@ project:
   output-dir: _site
   render:
     - "*.qmd"
+    - "math-writeups/*.qmd"
 
 website:
   title: "Longitudinal Data Analysis in R"
+  site-url: "https://wenbinwu2001.github.io/oh-my-qualify-application/"
   search: true
   sidebar:
     style: docked
@@ -13,7 +15,7 @@ website:
     contents:
       - text: "Topic catalogue"
         href: index.qmd
-      - section: "Core chapters"
+      - section: "Analysis in R"
         contents:
           - 01-eda-descriptive.qmd
           - 02-rm-anova-manova.qmd
@@ -23,6 +25,22 @@ website:
           - 06-glmm.qmd
           - 07-missing-data.qmd
           - 08-multivariate-testing-pca.qmd
+      - section: "Accompanying Mathematics"
+        contents:
+          - math-writeups/00-index.qmd
+          - math-writeups/01-foundations-mvn-ml-reml.qmd
+          - math-writeups/02-repeated-measures-anova-manova.qmd
+          - math-writeups/03-gaussian-marginal-models.qmd
+          - math-writeups/04-linear-mixed-models.qmd
+          - math-writeups/05-inference-diagnostics.qmd
+          - math-writeups/06-generalized-linear-models.qmd
+          - math-writeups/07-marginal-models-gee.qmd
+          - math-writeups/08-generalized-linear-mixed-multilevel.qmd
+          - math-writeups/09-ordinal-nominal-joint-models.qmd
+          - math-writeups/10-missing-data.qmd
+          - math-writeups/11-transition-models.qmd
+          - math-writeups/12-time-varying-covariates.qmd
+          - math-writeups/13-sample-size-power.qmd
       - section: "Reference"
         contents:
           - A1-inference-diagnostics.qmd

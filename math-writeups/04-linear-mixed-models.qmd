@@ -1,0 +1,164 @@
+---
+title: "4. Linear mixed models"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-001.pdf`, slides 37-41; `BIOS-767-Part-010.pdf`, slides 4-91; `BIOS-767-Part-011.pdf`, slides 4-56; `REML derivation.pdf`, document pp. 1-8.
+
+## Motivation
+
+An LMM represents subject heterogeneity through latent random coefficients. It decomposes covariance into between-subject and within-subject components and produces shrinkage predictions of individual trajectories.
+
+## Model and assumptions
+
+For subject $i$,
+
+$$
+Y_i=X_i\beta+Z_ib_i+\varepsilon_i,\qquad
+b_i\sim N_q(0,D),\qquad
+\varepsilon_i\sim N_{n_i}(0,R_i),
+$$
+
+with $b_i\perp\varepsilon_i$ and independence across subjects. Hence
+
+$$
+E(Y_i\mid b_i)=X_i\beta+Z_ib_i,\qquad
+E(Y_i)=X_i\beta,\qquad
+V_i=\operatorname{Var}(Y_i)=Z_iDZ_i^\mathsf T+R_i.
+$$
+
+The columns of $Z_i$ normally correspond to a subset of the fixed-effect covariates in $X_i$. Normality is not needed to define first and second moments, but it underlies the stated likelihood, conditional distributions, and exact empirical-Bayes calculations. *Slide source: `BIOS-767-Part-010.pdf`, slides 45-61.*
+
+### Random intercept
+
+$$
+Y_{ij}=x_{ij}^\mathsf T\beta+b_{0i}+\varepsilon_{ij},\qquad
+\operatorname{Var}(b_{0i})=\tau_0^2,\quad
+R_i=\sigma^2I.
+$$
+
+Then
+
+$$
+\operatorname{Var}(Y_{ij})=\tau_0^2+\sigma^2,\qquad
+\operatorname{Cov}(Y_{ij},Y_{ik})=\tau_0^2,
+$$
+
+and
+
+$$
+\mathrm{ICC}=\frac{\tau_0^2}{\tau_0^2+\sigma^2}.
+$$
+
+The induced covariance is compound symmetric. *Slide source: `BIOS-767-Part-010.pdf`, slides 52-55.*
+
+### Random intercept and slope
+
+For centered time $t_{ij}$,
+
+$$
+Y_{ij}=\beta_0+\beta_1t_{ij}+b_{0i}+b_{1i}t_{ij}+\varepsilon_{ij},
+\qquad
+\begin{pmatrix}b_{0i}\\b_{1i}\end{pmatrix}
+\sim N\!\left\{
+\begin{pmatrix}0\\0\end{pmatrix},
+\begin{pmatrix}d_{00}&d_{01}\\d_{01}&d_{11}\end{pmatrix}
+\right\}.
+$$
+
+With $R_i=\sigma^2I$,
+
+$$
+\operatorname{Var}(Y_{ij})
+=d_{00}+2d_{01}t_{ij}+d_{11}t_{ij}^2+\sigma^2,
+$$
+
+$$
+\operatorname{Cov}(Y_{ij},Y_{ik})
+=d_{00}+d_{01}(t_{ij}+t_{ik})+d_{11}t_{ij}t_{ik}.
+$$
+
+Thus a random slope creates time-dependent variance and covariance. Centering time changes the intercept and the intercept-slope covariance but not fitted values. *Slide source: `BIOS-767-Part-010.pdf`, slides 45-64.*
+
+Residual serial correlation may remain after random effects. Then specify, for example, $R_i$ as AR(1), exponential, or heteroscedastic. Avoid simultaneously overparameterizing $D$ and $R_i$: several decompositions can imply nearly indistinguishable $V_i$. *Slide source: `BIOS-767-Part-010.pdf`, slides 55-60.*
+
+## Estimation
+
+The marginal Gaussian likelihood is
+
+$$
+L(\beta,\theta)=\prod_{i=1}^N
+\frac{\exp\{-\tfrac12(Y_i-X_i\beta)^\mathsf TV_i(\theta)^{-1}(Y_i-X_i\beta)\}}
+{(2\pi)^{n_i/2}|V_i(\theta)|^{1/2}}.
+$$
+
+For fixed $\theta$,
+
+$$
+\widehat\beta(\theta)=
+\left(\sum_iX_i^\mathsf TV_i^{-1}X_i\right)^{-1}
+\sum_iX_i^\mathsf TV_i^{-1}Y_i.
+$$
+
+Estimate $\theta$ by ML or REML, usually through Newton-Raphson, Fisher scoring, EM, or derivative-free optimization. REML is preferred for the final variance-component fit when the fixed-effect structure is fixed. *Slide source: `BIOS-767-Part-010.pdf`, slides 71-91. The EM derivation is on slides 74-91.*
+
+## BLUP and empirical Bayes prediction
+
+If $\beta,D,R_i$ were known,
+
+$$
+\widetilde b_i=E(b_i\mid Y_i)
+=DZ_i^\mathsf TV_i^{-1}(Y_i-X_i\beta),
+$$
+
+$$
+\operatorname{Var}(b_i\mid Y_i)
+=D-DZ_i^\mathsf TV_i^{-1}Z_iD.
+$$
+
+Replacing unknown parameters gives the empirical BLUP
+
+$$
+\widehat b_i=\widehat D Z_i^\mathsf T\widehat V_i^{-1}
+(Y_i-X_i\widehat\beta),
+\qquad
+\widehat Y_i^{\,\mathrm{SS}}=X_i\widehat\beta+Z_i\widehat b_i.
+$$
+
+The predictor shrinks the subject-specific least-squares estimate toward zero, hence the individual trajectory toward $X_i\widehat\beta$. Shrinkage is stronger when $n_i$ is small or within-subject noise is large relative to $D$. Random effects are latent-variable predictions, not additional fixed-effect coefficients. *Slide source: `BIOS-767-Part-011.pdf`, slides 28-46. The conditional-normal and shrinkage derivations are on slides 33-42.*
+
+## Inference
+
+### Fixed effects
+
+For $H_0:C\beta=c$, use a Wald $t$, $F$, or $\chi^2$ statistic based on $C\widehat\beta$. In small samples, Satterthwaite degrees of freedom approximate the variance of an estimated contrast; Kenward-Roger additionally adjusts the covariance of $\widehat\beta$ and scales the Wald statistic. State the method used. *Slide source: `BIOS-767-Part-011.pdf`, slides 49-54.*
+
+### Random effects and covariance components
+
+Testing $H_0:\tau^2=0$ is a boundary problem. The ordinary $\chi^2$ likelihood-ratio reference is invalid. In the specific comparison of $q$ correlated random effects with $q+1$, the slides use
+
+$$
+G^2\ \dot\sim\ \tfrac12\chi_q^2+\tfrac12\chi_{q+1}^2.
+$$
+
+For adding a random slope to a random-intercept model, this is $\tfrac12\chi_1^2+\tfrac12\chi_2^2$. More complicated random-effect comparisons can have different mixtures; use a parametric bootstrap or a justified specialized result. *Slide source: `BIOS-767-Part-011.pdf`, slides 6-18.*
+
+Profile-likelihood or bootstrap intervals are preferable to symmetric Wald intervals for variance components because the parameter space is bounded below by zero.
+
+## Interpretation
+
+- $\beta$ describes the population mean and, under the identity link, also the conditional mean change holding $b_i$ fixed.
+- $b_{0i}$ and $b_{1i}$ describe subject deviations from population intercept and slope.
+- $d_{01}$ is scale- and origin-dependent; interpret it only after stating the time centering.
+- $\widehat b_i$ is conditional on the assumed $D$, $R_i$, and normal model.
+- A fixed effect for a between-subject exposure is not identified by within-subject exposure changes; its subject-specific interpretation relies partly on the random-effect distribution.
+
+*Slide source: `BIOS-767-Part-010.pdf`, slides 65-70; `BIOS-767-Part-022.pdf`, slide 32.*
+
+## When to apply
+
+Use an LMM when subject-specific trajectories, heterogeneity, prediction, variance decomposition, multilevel clustering, irregular timing, or MAR likelihood inference are important. Use a marginal covariance model when individual latent trajectories are unnecessary and direct modeling of $V_i$ is clearer.
+
+## External cross-check
+
+The model, integrated likelihood, EM formulation, and empirical-Bayes prediction agree with [Laird and Ware (1982)](https://pubmed.ncbi.nlm.nih.gov/7168798/). Boundary-test cautions agree with [Self and Liang (1987)](https://doi.org/10.1080/01621459.1987.10478472); small-sample fixed-effect inference agrees with [Kenward and Roger (1997)](https://pubmed.ncbi.nlm.nih.gov/9333350/).

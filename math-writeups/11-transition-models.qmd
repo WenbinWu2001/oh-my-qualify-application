@@ -1,0 +1,119 @@
+---
+title: "11. Transition models"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-001.pdf`, slide 48; `BIOS-767-Part-014.pdf`, slides 17-26; `BIOS-767-Part-020.pdf`, slides 2-32; `BIOS-767-Part-022.pdf`, slides 24-35.
+
+## Motivation and estimand
+
+A transition model explains serial association by conditioning the current response on its observed history
+
+$$
+H_{ij}=(Y_{i1},\ldots,Y_{i,j-1}).
+$$
+
+The estimand is a covariate effect conditional on specified past responses, not a marginal population-average or random-effect-conditional effect.
+
+## Generalized autoregressive formulation
+
+Assume
+
+$$
+Y_{ij}\mid H_{ij},X_{ij}\ \sim\ \text{exponential family},
+$$
+
+$$
+g\{E(Y_{ij}\mid H_{ij},X_{ij})\}
+=x_{ij}^\mathsf T\beta+
+\sum_{r=1}^s\alpha_rf_r(H_{ij}).
+$$
+
+An order-$q$ Markov model uses only $Y_{i,j-1},\ldots,Y_{i,j-q}$. *Slide source: `BIOS-767-Part-020.pdf`, slides 3-7.*
+
+### Gaussian first-order model
+
+Let $\mu_{ij}=x_{ij}^\mathsf T\beta$. A mean-adjusted first-order model with stationary covariance is
+
+$$
+Y_{i1}=\mu_{i1}+\varepsilon_{i1},\qquad
+Y_{ij}-\mu_{ij}
+=\alpha\{Y_{i,j-1}-\mu_{i,j-1}\}+\varepsilon_{ij}.
+$$
+
+If
+
+$$
+\operatorname{Var}(\varepsilon_{i1})=\sigma^2,\qquad
+\operatorname{Var}(\varepsilon_{ij})=\sigma^2(1-\alpha^2),\quad |\alpha|<1,
+$$
+
+then
+
+$$
+\operatorname{Var}(Y_{ij})=\sigma^2,\qquad
+\operatorname{Cov}(Y_{ij},Y_{ik})=\sigma^2\alpha^{|j-k|}.
+$$
+
+Thus a Gaussian first-order transition model induces marginal AR(1) covariance on an equally spaced occasion scale. This equivalence does not extend generally through nonlinear links. *Slide source: `BIOS-767-Part-020.pdf`, slides 8-11. The covariance derivation is on slides 9-10.*
+
+### Binary first-order model
+
+$$
+\operatorname{logit} P(Y_{ij}=1\mid Y_{i,j-1},X_{ij})
+=x_{ij}^\mathsf T\beta+\alpha Y_{i,j-1}.
+$$
+
+Here $e^\alpha$ is the persistence odds ratio comparing previous states $1$ versus $0$ at fixed $X_{ij}$. A richer model allows covariate effects to depend on the previous state:
+
+$$
+\operatorname{logit} P(Y_{ij}=1\mid Y_{i,j-1},X_{ij})
+=x_{ij}^\mathsf T\beta_0
++Y_{i,j-1}x_{ij}^\mathsf T\delta.
+$$
+
+Then $\delta$ tests whether covariate effects differ by prior response. *Slide source: `BIOS-767-Part-020.pdf`, slides 12-13.*
+
+## Likelihood and estimation
+
+The joint density factors sequentially:
+
+$$
+f(Y_{i1},\ldots,Y_{in_i}\mid X_i)
+=f(Y_{i1}\mid X_i)
+\prod_{j=2}^{n_i}f(Y_{ij}\mid H_{ij},X_{ij}).
+$$
+
+Conditional likelihood avoids modeling the initial distribution:
+
+$$
+L_c(\beta,\alpha)
+=\prod_i\prod_{j=2}^{n_i}
+f(Y_{ij}\mid H_{ij},X_{ij};\beta,\alpha).
+$$
+
+It can be fitted as a GLM with lagged outcomes appended to the design. It may be less efficient than a correct full likelihood and discards subjects with no post-initial transition. *Slide source: `BIOS-767-Part-020.pdf`, slides 14-16.*
+
+## Inference
+
+For $H_0:C\beta=c$, use a Wald statistic based on the model-information covariance when the conditional distribution is correctly specified, or a subject-clustered sandwich covariance for robustness to conditional-variance misspecification. Nested transition terms may be compared by an LRT only when both fits use the same response transitions and the same full or conditional likelihood. Neither method repairs an incorrect Markov order or missing response history. *Slide source: `BIOS-767-Part-020.pdf`, slides 14-16.*
+
+## Missingness and initial conditions
+
+Lagged outcomes must be observed to form a transition. Missing $Y_{i,j-1}$ can remove later usable observations and create selection. MAR likelihood arguments require a joint model that includes the missing history; complete-transition analysis generally needs stronger conditions. Treat the initial response as conditioned upon only when that conditional estimand is intended.
+
+## Interpretation
+
+- $e^{\beta_k}$: conditional odds/rate ratio given the specified response history.
+- $e^\alpha$: persistence association for a one-unit increase in the lagged response under a logit/log link.
+- A treatment effect can differ materially from the corresponding GEE or GLMM coefficient because each conditions on different information.
+
+*Slide source: `BIOS-767-Part-020.pdf`, slides 17-32; `BIOS-767-Part-022.pdf`, slides 29-35.*
+
+## When to apply
+
+Use a transition model when the scientific question is explicitly dynamic: how the present depends on the past. Do not choose it solely as a computational device for within-subject correlation when population-average or latent-trajectory effects are the target.
+
+## External cross-check
+
+The distinction among transition, population-averaged, and subject-specific models agrees with [Zeger, Liang, and Albert (1988)](https://pubmed.ncbi.nlm.nih.gov/3233245/).

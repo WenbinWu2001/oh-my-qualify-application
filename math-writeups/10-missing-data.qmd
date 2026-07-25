@@ -1,0 +1,190 @@
+---
+title: "10. Missing longitudinal data"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-004.pdf`, slides 4-33; `BIOS-767-Part-007.pdf`, slides 68-70; `BIOS-767-Part-018-1.pdf`, slides 11-88; `BIOS-767-Part-019.pdf`, slides 4-45; `missing_data_writeup.pdf`, document pp. 1-8.
+
+## Motivation
+
+Longitudinal missingness changes which response histories are observed. Valid analysis requires an explicit observation mechanism, an outcome model or estimating equation compatible with that mechanism, and sensitivity analysis for departures that observed data cannot identify.
+
+## Notation and mechanisms
+
+Let $R_{ij}=1$ if $Y_{ij}$ is observed and $0$ otherwise. Partition $Y=(Y_{\mathrm{obs}},Y_{\mathrm{mis}})$. Working conditionally on fully observed $X$:
+
+$$
+\begin{aligned}
+\text{MCAR:}\quad&
+P(R\mid Y_{\mathrm{obs}},Y_{\mathrm{mis}},X)=P(R\mid X),\\
+\text{MAR:}\quad&
+P(R\mid Y_{\mathrm{obs}},Y_{\mathrm{mis}},X)
+=P(R\mid Y_{\mathrm{obs}},X),\\
+\text{MNAR:}\quad&
+P(R\mid Y_{\mathrm{obs}},Y_{\mathrm{mis}},X)
+\text{ depends on }Y_{\mathrm{mis}}.
+\end{aligned}
+$$
+
+The first line is conditional MCAR, also called covariate-dependent missingness; unconditional MCAR replaces $P(R\mid X)$ by $P(R)$. MCAR is a special case of MAR. Mechanisms are statements about the joint data-generating process, not properties established by a significance test. *Slide source: `BIOS-767-Part-018-1.pdf`, slides 13-16.*
+
+## Ignorable likelihood
+
+Let $\theta$ index the outcome model and $\psi$ the observation model:
+
+$$
+f(Y,R\mid X,\theta,\psi)
+=f(Y\mid X,\theta)f(R\mid Y,X,\psi).
+$$
+
+The observed-data likelihood is
+
+$$
+L(\theta,\psi)
+\propto
+\int
+f(Y_{\mathrm{obs}},Y_{\mathrm{mis}}\mid X,\theta)
+f(R\mid Y_{\mathrm{obs}},Y_{\mathrm{mis}},X,\psi)
+dY_{\mathrm{mis}}.
+$$
+
+If MAR holds and $\theta,\psi$ are distinct, this factors as
+
+$$
+f(R\mid Y_{\mathrm{obs}},X,\psi)
+f(Y_{\mathrm{obs}}\mid X,\theta),
+$$
+
+so likelihood inference for $\theta$ may ignore the observation model. Bayesian ignorability additionally requires prior independence of $\theta$ and $\psi$. If parameters are not distinct, the observation-model factor can contain information about $\theta$ and cannot generally be discarded. Under MNAR, the displayed separation generally fails. *Slide source: `BIOS-767-Part-004.pdf`, slides 19-24; `BIOS-767-Part-018-1.pdf`, slides 18-29; `missing_data_writeup.pdf`, document pp. 1-8.*
+
+Consequences:
+
+- Gaussian ML/REML and GLMM likelihoods can use all observed outcomes under MAR if the outcome model is correct.
+- Ordinary GEE is generally justified under MCAR, not arbitrary MAR.
+- Complete-case and available-case summaries often require MCAR conditional on included covariates.
+- LOCF changes the estimand and treats imputed values as observed; it is not a principled MAR method.
+
+*Slide source: `BIOS-767-Part-007.pdf`, slides 68-70; `BIOS-767-Part-018-1.pdf`, slides 22-49.*
+
+## Estimation by the EM algorithm
+
+Let $\ell_c(\theta;Y_{\mathrm{obs}},Y_{\mathrm{mis}})$ be the complete-data log-likelihood. At iteration $t$:
+
+$$
+Q(\theta\mid\theta^{(t)})
+=E_{\theta^{(t)}}\{
+\ell_c(\theta;Y_{\mathrm{obs}},Y_{\mathrm{mis}})
+\mid Y_{\mathrm{obs}}
+\},
+$$
+
+$$
+\theta^{(t+1)}
+=\arg\max_\theta Q(\theta\mid\theta^{(t)}).
+$$
+
+The E-step replaces missing sufficient statistics by conditional expectations; the M-step performs the corresponding complete-data maximization. EM increases the observed-data likelihood but may converge slowly and does not itself supply a simple observed-information matrix. *Slide source: `BIOS-767-Part-004.pdf`, slides 25-33. The normal-example derivation is on slides 29-32.*
+
+## Estimation by multiple imputation
+
+Generate $M$ proper imputations from a model approximating
+
+$$
+p(Y_{\mathrm{mis}}\mid Y_{\mathrm{obs}},X).
+$$
+
+For analysis estimate $\widehat Q_m$ with covariance $U_m$. Rubin's combining rules are
+
+$$
+\bar Q=\frac1M\sum_{m=1}^M\widehat Q_m,\qquad
+\bar U=\frac1M\sum_{m=1}^MU_m,
+$$
+
+$$
+B=\frac1{M-1}\sum_{m=1}^M
+(\widehat Q_m-\bar Q)(\widehat Q_m-\bar Q)^\mathsf T,
+$$
+
+$$
+T=\bar U+\left(1+\frac1M\right)B.
+$$
+
+The imputation model should include the analysis outcome structure, all analysis covariates/interactions, predictors of missingness, and variables predictive of incomplete values. Longitudinal imputations must preserve subject and time structure. FCS/MICE specifies compatible-looking univariate conditionals iteratively; their exact joint compatibility is not guaranteed. *Slide source: `BIOS-767-Part-018-1.pdf`, slides 64-71; `BIOS-767-Part-019.pdf`, slides 20-45.*
+
+## Estimation by inverse-probability-weighted GEE
+
+For monotone observation, define
+
+$$
+\lambda_{ij}
+=P(R_{ij}=1\mid R_{i,j-1}=1,X_i,Y_{i1},\ldots,Y_{i,j-1}),
+$$
+
+$$
+\pi_{ij}=P(R_{ij}=1\mid X_i,Y_{i,\mathrm{obs}})
+=\prod_{\ell=1}^j\lambda_{i\ell}.
+$$
+
+Estimate $\lambda_{ij}$, commonly by pooled logistic regression, and solve
+
+$$
+\sum_iD_i^\mathsf TV_i^{-1}
+W_iR_i(Y_i-\mu_i)=0,
+$$
+
+where $R_i=\operatorname{diag}(R_{i1},\ldots,R_{in_i})$ and
+
+$$
+W_i=\operatorname{diag}(\widehat\pi_{i1}^{-1},\ldots,
+\widehat\pi_{in_i}^{-1}).
+$$
+
+The Horvitz-Thompson identity
+
+$$
+E\left\{\frac{R_{ij}Y_{ij}}{\pi_{ij}}\mid X_i,Y_i\right\}=Y_{ij}
+$$
+
+shows why the weighted estimating function has mean zero when the observation model is correct and positivity holds. Estimated weights require a variance estimator that accounts for estimating $\psi$. Stabilization and truncation can control variance but change the finite-sample bias-variance tradeoff. *Slide source: `BIOS-767-Part-018-1.pdf`, slides 46-63; the unbiasedness calculation is on slides 56-57.*
+
+## MNAR models and sensitivity analysis
+
+### Selection model
+
+$$
+f(Y_i,R_i\mid X_i)
+=f(Y_i\mid X_i;\theta)
+f(R_i\mid Y_i,X_i;\psi).
+$$
+
+The observation model directly contains missing outcomes or a sensitivity parameter governing their effect. *Slide source: `BIOS-767-Part-018-1.pdf`, slides 82-86.*
+
+### Pattern-mixture model
+
+$$
+f(Y_i,R_i\mid X_i)
+=f(R_i\mid X_i;\psi)
+f(Y_i\mid R_i,X_i;\theta_R).
+$$
+
+Extrapolation identifies unobserved outcomes within patterns. A delta adjustment, for example,
+
+$$
+Y_{ij,\mathrm{mis}}^{(\delta)}
+=Y_{ij,\mathrm{mis}}^{(\mathrm{MAR})}+\delta_j,
+$$
+
+varies an explicit unverifiable departure from MAR. *Slide source: `BIOS-767-Part-018-1.pdf`, slides 82-88.*
+
+MNAR is not identified from observed data without restrictions. Report sensitivity over scientifically plausible parameter values rather than presenting one MNAR fit as empirically verified.
+
+## Interpretation and when to apply
+
+- Likelihood under MAR: use when a plausible full outcome model is available.
+- MI: use for general missing patterns, incomplete covariates, or a complex complete-data analysis.
+- IPW-GEE: use when the marginal estimand is primary and the observation probabilities can be modeled with positivity.
+- Selection/pattern-mixture models: use for MNAR sensitivity, not as assumption-free corrections.
+
+## External cross-check
+
+Ignorability agrees with [Rubin (1976)](https://doi.org/10.1093/biomet/63.3.581). EM agrees with [Dempster, Laird, and Rubin (1977)](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x). MI combining rules agree with [Rubin (1987)](https://doi.org/10.1002/9780470316696). IPW-GEE agrees with [Robins, Rotnitzky, and Zhao (1995)](https://doi.org/10.1080/01621459.1995.10476493).

@@ -1,0 +1,116 @@
+---
+title: "13. Sample size and power"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-022.pdf`, slides 4-23.
+
+## Motivation and target
+
+Consider a two-group longitudinal study testing whether linear rates of change differ. Let $N_1=\pi N$, $N_0=(1-\pi)N$, and
+
+$$
+\delta=\beta_1^{(1)}-\beta_1^{(0)}.
+$$
+
+The null is $H_0:\delta=0$ against a two-sided alternative.
+
+## Planning model
+
+For subject $i$ at common times $t_1,\ldots,t_n$,
+
+$$
+Y_{ij}=(\beta_0^{(z_i)}+b_{0i})
++(\beta_1^{(z_i)}+b_{1i})t_j+\varepsilon_{ij},
+$$
+
+with
+
+$$
+\begin{pmatrix}b_{0i}\\b_{1i}\end{pmatrix}
+\sim N\!\left[
+\begin{pmatrix}0\\0\end{pmatrix},
+\begin{pmatrix}d_{00}&d_{01}\\d_{01}&d_{11}\end{pmatrix}
+\right],
+\qquad
+\varepsilon_{ij}\stackrel{\mathrm{iid}}{\sim}N(0,\sigma_e^2).
+$$
+
+The variance of a subject-specific OLS slope is
+
+$$
+\sigma_\beta^2
+=\operatorname{Var}(\widehat\beta_{1i})
+=d_{11}+
+\frac{\sigma_e^2}{\sum_{j=1}^n(t_j-\bar t)^2},
+\qquad
+\bar t=\frac1n\sum_{j=1}^nt_j.
+$$
+
+*Slide source: `BIOS-767-Part-022.pdf`, slides 5-9.*
+
+## Planned inference and closed-form sample size
+
+Under equal slope variance in both groups,
+
+$$
+\operatorname{Var}(\widehat\delta)
+=\sigma_\beta^2\left(\frac1{N_1}+\frac1{N_0}\right)
+=\frac{\sigma_\beta^2}{N\pi(1-\pi)}.
+$$
+
+The normal-approximation test rejects $H_0:\delta=0$ when
+
+$$
+\left|\frac{\widehat\delta}
+{\sigma_\beta/\sqrt{N\pi(1-\pi)}}\right|
+>z_{1-\alpha/2}.
+$$
+
+Using the normal approximation to a two-sample slope comparison,
+
+$$
+N=
+\frac{(z_{1-\alpha/2}+z_{1-\gamma})^2\sigma_\beta^2}
+{\pi(1-\pi)\delta^2},
+$$
+
+where $1-\gamma$ is power. Round upward and inflate for expected dropout/nonadherence. Balanced allocation $\pi=1/2$ minimizes $N$ when per-subject costs and variances are equal. *Slide source: `BIOS-767-Part-022.pdf`, slides 9-10. The slides state the result; proof is omitted.*
+
+The formula shows:
+
+$$
+N\propto \sigma_\beta^2,\qquad
+N\propto\delta^{-2},\qquad
+N\propto\{\pi(1-\pi)\}^{-1}.
+$$
+
+More widely spread measurement times reduce the residual contribution through $\sum_j(t_j-\bar t)^2$, but cannot reduce the irreducible random-slope variance $d_{11}$.
+
+## Simulation-based power
+
+Use simulation when the analysis includes nonlinear time, GLMM/GEE estimation, irregular schedules, complex covariance, small-sample degrees of freedom, missingness, nonconvergence, or multiplicity:
+
+1. Specify design, parameters, covariance/random effects, and observation process.
+2. Generate complete outcomes under a scientifically justified alternative.
+3. Generate missingness and protocol deviations.
+4. Apply the exact planned analysis, including model selection only if it will occur in practice.
+5. Record rejection, bias, coverage, convergence, and usable sample size.
+6. Estimate power by
+
+   $$
+   \widehat{\mathrm{Power}}=\frac1B\sum_{b=1}^BI(p_b<\alpha),
+   \qquad
+   \operatorname{MCSE}=
+   \sqrt{\frac{\widehat{\mathrm{Power}}(1-\widehat{\mathrm{Power}})}{B}}.
+   $$
+
+*Slide source: `BIOS-767-Part-022.pdf`, slides 11-23.*
+
+## Missingness sensitivity
+
+Under MNAR, a simple attrition inflation is insufficient because both effective information and estimand bias can change. Simulate several observation models, including outcome-dependent dropout, and evaluate bias and type-I error in addition to power. *Slide source: `BIOS-767-Part-022.pdf`, slides 18-23.*
+
+## Interpretation and when to apply
+
+Use the closed form for a common-time, Gaussian linear-slope design under the stated random-intercept/slope model. Use simulation for the final design whenever the planned analysis departs materially from those assumptions. Planning values for $d_{11}$, $\sigma_e^2$, and $\delta$ should come from external/pilot evidence and be varied over plausible ranges.

@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companion"}
+[Inference and diagnostics](math-writeups/05-inference-diagnostics.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -150,8 +154,8 @@ if (requireNamespace("performance", quietly = TRUE) &&
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-012.pdf`, pp. 5--14 and 26--50 (marginal/conditional residuals, variograms, influence).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/2.3 - LMM_4.pdf`, pp. 1--16 (serial correlation, residuals, random-effect checks).
-- `/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 86--92 (cumulative residuals and cluster diagnostics).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW4/PROGRAMS_HW4/02-HW4-P1C.sas`, lines 103--216 (observation/case deletion influence and KR inference).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Fumin/767HW5.Rmd`, residual, QQ, and influence code chunks.
+- `BIOS-767-Part-012.pdf`, pp. 5--14 and 26--50 (marginal/conditional residuals, variograms, influence).
+- UW STAT571 (serial correlation, residuals, and random-effect checks).
+- `BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 86--92 (cumulative residuals and cluster diagnostics).
+- BIOS767 Homework 4 (observation/case deletion influence and KR inference).
+- BIOS767 Homework 5 (residual, QQ, and influence code).

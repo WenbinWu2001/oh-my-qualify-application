@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companions"}
+[Repeated-measures ANOVA and MANOVA](math-writeups/02-repeated-measures-anova-manova.qmd) · [Sample size and power](math-writeups/13-sample-size-power.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -142,10 +146,9 @@ For classical MANOVA, verify complete response vectors, common occasions, indepe
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-005.pdf`, pp. 7--14 and 24--39 (univariate RM-ANOVA and sphericity).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-006.pdf`, pp. 4--23 (MANOVA and profile tests).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/anova-refitting.pdf`, pp. 1--5 (Type I versus Type III tests and refitting).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/03-HW3-Profile-Analysis.sas`, lines 21--160 (profile analysis and unstructured covariance).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/Bios767 HW sol/HW3/PROGRAMS/04-HW3-Trajectory-Analysis-Time.sas`, lines 178--227 (parallelism contrasts and ML comparisons).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/8.0 - Multivariate_Analysis_1_Testing.pdf`, pp. 9--16 and 22--30 (multivariate test statistics).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-022.pdf`, pp. 4--23 (sample size/power for a continuous longitudinal contrast).
+- `BIOS-767-Part-005.pdf`, pp. 7--14 and 24--39 (univariate RM-ANOVA and sphericity).
+- `BIOS-767-Part-006.pdf`, pp. 4--23 (MANOVA and profile tests).
+- `anova-refitting.pdf`, pp. 1--5 (Type I versus Type III tests and refitting).
+- BIOS767 Homework 3 (profile analysis, unstructured covariance, parallelism contrasts, and ML comparisons).
+- UW STAT571 (multivariate test statistics).
+- `BIOS-767-Part-022.pdf`, pp. 4--23 (sample size/power for a continuous longitudinal contrast).

@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companions"}
+[Multivariate-normal foundations](math-writeups/01-foundations-mvn-ml-reml.qmd) · [Repeated-measures MANOVA](math-writeups/02-repeated-measures-anova-manova.qmd) · [Ordinal, nominal, and joint responses](math-writeups/09-ordinal-nominal-joint-models.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -111,8 +115,5 @@ For MANOVA, examine multivariate outliers, covariance heterogeneity, rank, and c
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/8.0 - Multivariate_Analysis_1_Testing.pdf`, pp. 3--16, 18--30, and 32--35 (MVN, Hotelling, MANOVA statistics).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/8.1 - Multivariate_Analysis_2_PCA.pdf`, pp. 1--21, 24--39, and 44--51 (PCA, factor analysis, PCoA/MDS).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-006.pdf`, pp. 4--23 (longitudinal MANOVA/profile analysis).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/project/Bumjun/fpca.Rmd`, R code chunks (functional PCA estimation and eigenfunction visualization; project-specific extension).
-
+- UW STAT571 (MVN, Hotelling tests, MANOVA statistics, PCA, factor analysis, PCoA/MDS, and functional PCA).
+- `BIOS-767-Part-006.pdf`, pp. 4--23 (longitudinal MANOVA/profile analysis).

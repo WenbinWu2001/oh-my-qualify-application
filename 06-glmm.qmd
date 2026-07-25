@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companions"}
+[GLMMs and multilevel models](math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Ordinal, nominal, and joint models](math-writeups/09-ordinal-nominal-joint-models.qmd) · [Transition models](math-writeups/11-transition-models.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -143,10 +147,7 @@ Compare Laplace and higher-order quadrature when cluster sizes are small or rand
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-015.pdf`, pp. 5--24, 31--39, and 50--61 (GLMM specification, estimation, interpretation).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.0 - GLMM_1.pdf`, pp. 1--16 and 22--30 (subject-specific models).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf`, pp. 5--13 (GEE/GLMM marginalization and attenuation).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.2 - GLMM_3.pdf`, pp. 1--21; `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.3 - GLMM_4.pdf`, pp. 1--7 (quadrature, Laplace, PQL, empirical Bayes).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Assignments/UNC-BIOS767/analysis_Wenbin/Assignment7/BIOS767-HW7.Rmd`, code chunks `fit_models` and `random_effects_predictions` (R GLMM comparison and predictions).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/HW/HW5/STAT571-HW5-Code.Rmd`, GLMM/GEE comparison chunks (conditional versus marginal fits).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-020.pdf`, pp. 2--32 (transition models and lagged responses).
+- `BIOS-767-Part-015.pdf`, pp. 5--24, 31--39, and 50--61 (GLMM specification, estimation, interpretation).
+- UW STAT571 (subject-specific models, GEE/GLMM marginalization, quadrature, Laplace, PQL, empirical Bayes, and GLMM/GEE comparisons).
+- BIOS767 Homework 7 (GLMM comparison and predictions).
+- `BIOS-767-Part-020.pdf`, pp. 2--32 (transition models and lagged responses).

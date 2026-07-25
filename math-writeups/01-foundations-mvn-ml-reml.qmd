@@ -1,0 +1,201 @@
+---
+title: "1. Foundations: MVN, ML, REML, and GLS"
+format: html
+---
+
+**Slides covered.** `BIOS-767-Part-002.pdf`, slides 8-46; `BIOS-767-Part-003.pdf`, slides 4-31; `BIOS-767-Part-007.pdf`, slides 21-71; `Lecture-07-Part2.pdf`, document pp. 1-12; `REML derivation.pdf`, document pp. 1-8.
+
+## Motivation
+
+Longitudinal analysis is multivariate analysis with scientifically ordered components. Valid estimation must account for unequal marginal variances and within-subject covariance. The multivariate normal model supplies a full likelihood for continuous outcomes; GLS/WLS supplies moment-based estimation when a complete distribution is unnecessary.
+
+## Multivariate normal model
+
+For $Y\in\mathbb R^n$,
+
+$$
+Y\sim N_n(\mu,\Sigma),\qquad
+f(y)=\frac{\exp\{-\tfrac12(y-\mu)^\mathsf T\Sigma^{-1}(y-\mu)\}}
+{(2\pi)^{n/2}|\Sigma|^{1/2}},
+$$
+
+where $\Sigma=\operatorname{Cov}(Y)$ is symmetric positive definite. Writing $T=\operatorname{diag}(\sigma_{11},\ldots,\sigma_{nn})$ and $R=\operatorname{Corr}(Y)$,
+
+$$
+\Sigma=T^{1/2}RT^{1/2}.
+$$
+
+Positive definiteness is required for a nonsingular density and implies $c^\mathsf T\Sigma c>0$ for all $c\ne0$. *Slide source: `BIOS-767-Part-002.pdf`, slides 9-13 and 23-24.*
+
+For a fixed $r\times n$ matrix $A$ and vector $a$,
+
+$$
+AY+a\sim N_r(A\mu+a,A\Sigma A^\mathsf T).
+$$
+
+Thus contrasts, changes from baseline, and linear summaries remain normal. If
+
+$$
+Y=\begin{pmatrix}Y_1\\Y_2\end{pmatrix},\quad
+\mu=\begin{pmatrix}\mu_1\\\mu_2\end{pmatrix},\quad
+\Sigma=\begin{pmatrix}\Sigma_{11}&\Sigma_{12}\\\Sigma_{21}&\Sigma_{22}\end{pmatrix},
+$$
+
+then
+
+$$
+Y_1\mid Y_2=y_2\sim N\!\left(
+\mu_1+\Sigma_{12}\Sigma_{22}^{-1}(y_2-\mu_2),
+\Sigma_{11}-\Sigma_{12}\Sigma_{22}^{-1}\Sigma_{21}
+\right).
+$$
+
+The transformation proof is assigned on `BIOS-767-Part-002.pdf`, slide 38; the conditional-normal result and example are on slides 43-44.
+
+The squared Mahalanobis distance
+
+$$
+D^2=(Y-\mu)^\mathsf T\Sigma^{-1}(Y-\mu)
+$$
+
+has a $\chi_n^2$ distribution under the model. Its empirical version is a cluster-level outlier measure, not a collection of independent univariate residual tests. The whitening proof appears on `BIOS-767-Part-002.pdf`, slide 42.
+
+## Gaussian longitudinal mean model
+
+For independent subjects,
+
+$$
+Y_i\sim N_{n_i}\{X_i\beta,\Sigma_i(\theta)\},\qquad i=1,\ldots,N.
+$$
+
+The design $X_i$ may contain treatment, categorical visit, continuous time, interactions, polynomials, or spline bases. The covariance dimension may vary with $n_i$. *Slide source: `BIOS-767-Part-007.pdf`, slides 6-8.*
+
+The log-likelihood, up to a constant, is
+
+$$
+\ell(\beta,\theta)
+=-\frac12\sum_{i=1}^N
+\left[
+\log|\Sigma_i(\theta)|
++\{Y_i-X_i\beta\}^\mathsf T\Sigma_i(\theta)^{-1}\{Y_i-X_i\beta\}
+\right].
+$$
+
+Conditional on $\theta$, the GLS estimator is
+
+$$
+\widehat\beta(\theta)=
+\left(\sum_iX_i^\mathsf T\Sigma_i^{-1}X_i\right)^{-1}
+\left(\sum_iX_i^\mathsf T\Sigma_i^{-1}Y_i\right),
+\qquad
+\operatorname{Var}\{\widehat\beta(\theta)\}
+=\left(\sum_iX_i^\mathsf T\Sigma_i^{-1}X_i\right)^{-1}.
+$$
+
+ML alternates between estimating $\beta$ and covariance parameters because each estimator depends on the other. *Slide source: `BIOS-767-Part-007.pdf`, slides 22-27.*
+
+## WLS without a full distribution
+
+Assume only
+
+$$
+E(Y_i)=X_i\beta,\qquad \operatorname{Var}(Y_i)=\Sigma_i,
+$$
+
+and let $W_i$ be fixed positive-definite weights. WLS minimizes
+
+$$
+Q_W(\beta)=\sum_i(Y_i-X_i\beta)^\mathsf TW_i(Y_i-X_i\beta)
+$$
+
+and gives
+
+$$
+\widehat\beta_W=
+\left(\sum_iX_i^\mathsf TW_iX_i\right)^{-1}
+\sum_iX_i^\mathsf TW_iY_i.
+$$
+
+If the mean model is correct and the weights are fixed, $E(\widehat\beta_W)=\beta$ for any $W_i$. The choice $W_i=\Sigma_i^{-1}$ is efficient within the WLS class. Working independence $W_i=I$ preserves unbiased point estimation but invalidates an independence-based variance estimator. *Slide source: `BIOS-767-Part-007.pdf`, slides 33-39; `Lecture-07-Part2.pdf`, document pp. 4-7.*
+
+Define
+
+$$
+B=\sum_iX_i^\mathsf TW_iX_i,\qquad
+M=\sum_iX_i^\mathsf TW_i
+(Y_i-X_i\widehat\beta_W)(Y_i-X_i\widehat\beta_W)^\mathsf T
+W_iX_i.
+$$
+
+The cluster-robust covariance estimator is
+
+$$
+\widehat{\operatorname{Var}}_{\mathrm{rob}}(\widehat\beta_W)
+=B^{-1}MB^{-1}.
+$$
+
+It remains consistent under covariance misspecification, provided clusters are independent, the mean is correct, regularity conditions hold, and $N$ is sufficiently large. It does not protect against a misspecified mean. *Slide source: `BIOS-767-Part-007.pdf`, slides 55-59 and 64-67.*
+
+## ML versus REML
+
+For $Y\sim N(X\beta,V_\theta)$, the profiled ML criterion is
+
+$$
+\ell_{\mathrm{ML}}(\theta)
+=-\frac12\left[
+\log|V_\theta|
++(Y-X\widehat\beta_\theta)^\mathsf TV_\theta^{-1}(Y-X\widehat\beta_\theta)
+\right]+C.
+$$
+
+REML uses $N-p$ linearly independent error contrasts $A^\mathsf TY$ satisfying $A^\mathsf TX=0$. Its profiled criterion is
+
+$$
+\ell_{\mathrm{REML}}(\theta)
+=-\frac12\left[
+\log|V_\theta|
++\log|X^\mathsf TV_\theta^{-1}X|
++(Y-X\widehat\beta_\theta)^\mathsf TV_\theta^{-1}(Y-X\widehat\beta_\theta)
+\right]+C_X.
+$$
+
+The adjustment accounts for fixed-effect estimation and usually reduces small-sample bias in covariance estimation. In the iid normal model, ML divides the residual sum of squares by $N$, whereas REML divides by $N-p$. *Slide source: `BIOS-767-Part-003.pdf`, slides 15-18 and 24-31.*
+
+Because the REML transformation depends on $X$:
+
+- compare nested mean models under ML with the same covariance structure;
+- compare covariance models under REML only when the fixed-effect design is identical;
+- obtain the final covariance estimates and fixed-effect inference under REML when the mean model has been selected.
+
+*Slide source: `BIOS-767-Part-003.pdf`, slides 29-31; `BIOS-767-Part-009.pdf`, slides 80-88 and 111-123.*
+
+## Inference
+
+For $H_0:C\beta=c$, the large-sample Wald statistic is
+
+$$
+W=(C\widehat\beta-c)^\mathsf T
+\{C\widehat{\operatorname{Var}}(\widehat\beta)C^\mathsf T\}^{-1}
+(C\widehat\beta-c)
+\ \dot\sim\ \chi_r^2,\qquad r=\operatorname{rank}(C).
+$$
+
+For nested likelihood models,
+
+$$
+G^2=2\{\ell_{\mathrm{full}}-\ell_{\mathrm{reduced}}\}
+\ \dot\sim\ \chi_{\Delta p}^2,
+$$
+
+when the null is interior and regularity conditions hold. Boundary nulls require nonstandard reference distributions. *Slide source: `BIOS-767-Part-007.pdf`, slides 60-63.*
+
+## Interpretation and when to apply
+
+- Use the MVN likelihood when a continuous response is plausibly jointly Gaussian and likelihood-based MAR inference or covariance modeling is important.
+- Use WLS/GEE with a sandwich covariance when the marginal mean is primary and distributional robustness is preferred.
+- Interpret $c^\mathsf T\beta$ as the adjusted mean contrast encoded by $c$, conditional on the chosen design and time origin.
+- Interpret covariance parameters only under the specified covariance family; a working covariance in GEE is primarily an efficiency device unless association is itself modeled.
+
+## External cross-check
+
+The GLS, likelihood, and error-contrast formulations agree with standard Gaussian linear-model theory; the LMM specialization is cross-checked against [Laird and Ware (1982)](https://pubmed.ncbi.nlm.nih.gov/7168798/).

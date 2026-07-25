@@ -1,0 +1,61 @@
+---
+title: "Accompanying Mathematics"
+format: html
+---
+
+These writeups are mathematical companions to the executable chapters in the longitudinal R manual. They emphasize estimands, assumptions, estimation, inference, and interpretation. They do not reproduce code.
+
+## Citation convention
+
+`slide N` is the slide number printed in the lower-left corner of the named lecture deck. It is independent of PDF pagination and therefore remains stable across clean and annotated copies. For supplementary documents without slide footers, `document p. N` denotes the visible document page number. A source note identifies the slides or document pages supporting the immediately preceding result. Proofs are omitted; their source locations are given where available.
+
+## Notation
+
+Subjects or independent clusters are indexed by $i=1,\ldots,N$; repeated observations within subject $i$ are indexed by $j=1,\ldots,n_i$. Unless stated otherwise,
+
+$$
+Y_i=(Y_{i1},\ldots,Y_{in_i})^\mathsf T,\qquad
+\mu_i=E(Y_i\mid X_i),\qquad
+V_i=\operatorname{Var}(Y_i\mid X_i).
+$$
+
+The parameter $\beta$ governs the mean model. Parameters $\theta$, $\alpha$, $D$, $R_i$, and $\phi$ govern covariance, association, random effects, or dispersion as defined in each writeup. Independent subjects are the asymptotic sampling units.
+
+## Topic map
+
+| Mathematical writeup | Main content | Code companions |
+|---|---|---|
+| [Foundations: MVN, ML, REML, and GLS](01-foundations-mvn-ml-reml.qmd) | Multivariate normal theory, GLS/WLS, sandwich covariance, ML/REML | [EDA](../01-eda-descriptive.qmd), [Gaussian/LMM](../03-linear-mixed-models.qmd), [multivariate methods](../08-multivariate-testing-pca.qmd) |
+| [Repeated-measures ANOVA and MANOVA](02-repeated-measures-anova-manova.qmd) | Sphericity, profile hypotheses, multivariate tests | [RM-ANOVA/MANOVA](../02-rm-anova-manova.qmd) |
+| [Gaussian marginal models](03-gaussian-marginal-models.qmd) | Response profiles, time trends, splines, covariance structures, model selection | [Gaussian/LMM](../03-linear-mixed-models.qmd) |
+| [Linear mixed models](04-linear-mixed-models.qmd) | Random effects, variance components, BLUPs, ML/REML, boundary tests | [Gaussian/LMM](../03-linear-mixed-models.qmd) |
+| [Inference and diagnostics](05-inference-diagnostics.qmd) | Wald/LRT rules, small-sample inference, residuals, influence | [Inference/diagnostics](../A1-inference-diagnostics.qmd) |
+| [Generalized linear models](06-generalized-linear-models.qmd) | Exponential family, links, likelihood, deviance, quasi-likelihood | [GLM review](../05-glm-review.qmd) |
+| [Marginal models and GEE](07-marginal-models-gee.qmd) | Population-averaged models, estimating equations, sandwich covariance, QIC | [GEE](../04-marginal-models-gee.qmd) |
+| [GLMMs and multilevel models](08-generalized-linear-mixed-multilevel.qmd) | Subject-specific models, integrated likelihood, quadrature, ICC, offsets | [GLMM](../06-glmm.qmd) |
+| [Ordinal, nominal, and joint models](09-ordinal-nominal-joint-models.qmd) | Proportional odds, generalized logits, shared random effects | [GLM review](../05-glm-review.qmd), [GLMM](../06-glmm.qmd) |
+| [Missing longitudinal data](10-missing-data.qmd) | MCAR/MAR/MNAR, ignorability, EM, MI, IPW-GEE, sensitivity models | [Missing data](../07-missing-data.qmd) |
+| [Transition models](11-transition-models.qmd) | Markov regression, conditional likelihood, lag interactions | [GEE](../04-marginal-models-gee.qmd), [GLMM](../06-glmm.qmd) |
+| [Time-varying covariates](12-time-varying-covariates.qmd) | Exogeneity, endogenous covariates, distributed lags, causal warning | [GEE](../04-marginal-models-gee.qmd) |
+| [Sample size and power](13-sample-size-power.qmd) | Linear-slope design formula and simulation-based power | [RM-ANOVA/MANOVA](../02-rm-anova-manova.qmd), [Gaussian/LMM](../03-linear-mixed-models.qmd) |
+
+## Model-selection decision
+
+For a non-Gaussian longitudinal outcome, the scientific estimand determines the primary model:
+
+$$
+\begin{array}{lll}
+\text{Marginal/GEE:} & g\{E(Y_{ij}\mid X_{ij})\}=X_{ij}^\mathsf T\beta_{\mathrm{PA}},
+& \text{population-average effect};\\[2mm]
+\text{GLMM:} & g\{E(Y_{ij}\mid X_{ij},b_i)\}=X_{ij}^\mathsf T\beta_{\mathrm{SS}}+Z_{ij}^\mathsf Tb_i,
+& \text{subject-specific effect};\\[2mm]
+\text{Transition:} & g\{E(Y_{ij}\mid H_{ij},X_{ij})\}=X_{ij}^\mathsf T\beta_{\mathrm{TR}}+h(H_{ij}),
+& \text{effect conditional on response history}.
+\end{array}
+$$
+
+With a nonlinear link, these parameters generally differ. With a Gaussian identity-link model and $E(b_i)=0$, the fixed effects have both marginal and conditional mean interpretations. *Slide source: `BIOS-767-Part-022.pdf`, slides 25-35; `BIOS-767-Part-010.pdf`, slides 65-69.*
+
+## External cross-checks
+
+The formulations were cross-checked against the primary literature: [Laird and Ware (1982)](https://pubmed.ncbi.nlm.nih.gov/7168798/) for LMMs, [Liang and Zeger (1986)](https://doi.org/10.1093/biomet/73.1.13) for GEE, [Zeger, Liang, and Albert (1988)](https://pubmed.ncbi.nlm.nih.gov/3233245/) for population-averaged versus subject-specific models, [Rubin (1976)](https://doi.org/10.1093/biomet/63.3.581) for ignorability, and [Dempster, Laird, and Rubin (1977)](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) for EM.

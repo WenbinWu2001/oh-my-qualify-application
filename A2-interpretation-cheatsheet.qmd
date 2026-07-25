@@ -4,6 +4,10 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
+::: {.callout-note title="Mathematical companions"}
+[Math-writeup catalogue](math-writeups/00-index.qmd) · [Gaussian marginal models](math-writeups/03-gaussian-marginal-models.qmd) · [LMMs](math-writeups/04-linear-mixed-models.qmd) · [GEE](math-writeups/07-marginal-models-gee.qmd) · [GLMMs](math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Transition models](math-writeups/11-transition-models.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -118,8 +122,7 @@ glmm_bin@optinfo$conv$lme4$messages
 
 ## 9. Source references
 
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/3.0 - Model Families.pdf`, pp. 2--5 (conditional and marginal model families).
-- `/Users/wenbinwu/Documents/UW/25Winter/STAT571/notes/6.1 - GLMM_2.pdf`, pp. 5--13 and 15--22 (PA/SS relationship and interpretation).
-- `/Users/wenbinwu/Documents/UNC/qualify-exam/resources/notes/BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 80--85 (generalized mixed-model coefficient interpretation and attenuation).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-010.pdf`, pp. 40--58 and 62--71 (fixed effects, random effects, BLUPs, ICC).
-- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-014.pdf`, pp. 39--52 and 62--68 (marginal GEE interpretation and covariance estimators).
+- UW STAT571 (conditional and marginal model families, PA/SS relationships, and interpretation).
+- `BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 80--85 (generalized mixed-model coefficient interpretation and attenuation).
+- `BIOS-767-Part-010.pdf`, pp. 40--58 and 62--71 (fixed effects, random effects, BLUPs, ICC).
+- `BIOS-767-Part-014.pdf`, pp. 39--52 and 62--68 (marginal GEE interpretation and covariance estimators).

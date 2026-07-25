@@ -1,4 +1,6 @@
+# Quarto-generated state and website output
 /.quarto/
+/_freeze/
 /_site/
 
 
@@ -15,6 +17,7 @@ Thumbs.db
 .Rcheck/
 *.utf8.md
 *.knit.md
+**/*.quarto_ipynb
 *.log
 *.aux
 *.bcf
