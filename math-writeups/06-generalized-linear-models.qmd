@@ -3,7 +3,7 @@ title: "6. Generalized linear models"
 format: html
 ---
 
-**Slides covered.** `BIOS-767-Part-013.pdf`, slides 4-69; `BIOS-767-Part-014.pdf`, slides 4-43.
+**Slides covered.** `BIOS-767-Part-013.pdf`, slides 4-69; `BIOS-767-Part-014.pdf`, slides 4-43; `BIOS-767-Part-015.pdf`, slide 17.
 
 ## Motivation
 

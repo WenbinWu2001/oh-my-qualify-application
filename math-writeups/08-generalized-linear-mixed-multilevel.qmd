@@ -132,6 +132,8 @@ The offset makes $e^{\beta_1}$ a conditional rate ratio rather than a raw-count 
 
 ## Interpretation
 
+**Caveat:** In a GLMM, the fixed effects \(\beta\) are subject-specific: they characterize covariate effects conditional on the subject's random effects. With a nonlinear link, averaging over the random effects generally does not preserve \(x_{ij}^{\mathsf T}\beta\), so these coefficients do not generally have a population-average interpretation; the identity-link LMM is an exception. *Slide source: `BIOS-767-Part-014.pdf`, slides 10-43; `BIOS-767-Part-015.pdf`, slide 17.*
+
 - Binary: $e^{\beta_k}$ is a conditional odds ratio at the same random-effect value.
 - Count: $e^{\beta_k}$ is a conditional rate ratio at the same random-effect value and exposure scale.
 - $\operatorname{Var}(b_i)$ measures unexplained latent heterogeneity, conditional on included covariates.

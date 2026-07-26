@@ -3,7 +3,7 @@ title: "4. Linear mixed models"
 format: html
 ---
 
-**Slides covered.** `BIOS-767-Part-001.pdf`, slides 37-41; `BIOS-767-Part-010.pdf`, slides 4-91; `BIOS-767-Part-011.pdf`, slides 4-56; `REML derivation.pdf`, document pp. 1-8.
+**Slides covered.** `BIOS-767-Part-001.pdf`, slides 37-41; `[Important] BIOS-767-Part-009.pdf`, slides 27 and 99-109; `BIOS-767-Part-010.pdf`, slides 4-91; `BIOS-767-Part-011.pdf`, slides 4-56; `REML derivation.pdf`, document pp. 1-8.
 
 ## Motivation
 
@@ -28,6 +28,40 @@ V_i=\operatorname{Var}(Y_i)=Z_iDZ_i^\mathsf T+R_i.
 $$
 
 The columns of $Z_i$ normally correspond to a subset of the fixed-effect covariates in $X_i$. Normality is not needed to define first and second moments, but it underlies the stated likelihood, conditional distributions, and exact empirical-Bayes calculations. *Slide source: `BIOS-767-Part-010.pdf`, slides 45-61.*
+
+### Connection with the marginal Gaussian model
+
+Conditional on the subject-specific random effects,
+
+$$
+Y_i\mid b_i\sim N_{n_i}(X_i\beta+Z_ib_i,R_i).
+$$
+
+Integrating over $b_i\sim N_q(0,D)$ gives
+
+$$
+Y_i\sim N_{n_i}(X_i\beta,V_i),
+\qquad
+V_i=Z_iDZ_i^\mathsf T+R_i.
+$$
+
+Thus,
+
+$$
+\text{conditional mixed model}
+\xrightarrow{\text{integrate out }b_i}
+\text{marginal Gaussian model}.
+$$
+
+Every Gaussian LMM therefore induces a marginal Gaussian model. The converse requires a decomposition $\Sigma_i=Z_iDZ_i^\mathsf T+R_i$, which may not exist under a proposed random-effects structure and need not be unique. A marginal Gaussian model can instead specify $\Sigma_i$ directly without introducing latent subject effects. *Slide source: `[Important] BIOS-767-Part-009.pdf`, slides 27 and 99-109; `BIOS-767-Part-010.pdf`, slides 43 and 48-53.*
+
+| View | Mean being modeled | Interpretation |
+|---|---|---|
+| Marginal model | $E(Y_i)=X_i\beta$ | Mean response in the population |
+| Mixed-model conditional view | $E(Y_i\mid b_i)=X_i\beta+Z_ib_i$ | Mean trajectory for a subject having random effects $b_i$ |
+| Mixed model after marginalization | $E(Y_i)=X_i\beta$ | Population mean implied by the mixed model |
+
+**Remark.** In a linear mixed model with an identity link, both interpretations of $\beta$ are valid: (1) it describes the effect of the predictors in $X_i$ conditional on fixed values of $b_i$, hence within a subject-specific trajectory; and (2) because $E(b_i)=0$, it describes the effect of $X_i$ on the mean response averaged over the population. If a covariate also has a random coefficient, the corresponding effect for subject $i$ is the relevant fixed-effect coefficient plus that subject's random deviation. This equivalence generally fails for nonlinear mixed models because integrating over $b_i$ does not commute with a nonlinear inverse link. *Slide source: `BIOS-767-Part-010.pdf`, slides 65-70.*
 
 ### Random intercept
 
@@ -100,7 +134,57 @@ $$
 \sum_iX_i^\mathsf TV_i^{-1}Y_i.
 $$
 
-Estimate $\theta$ by ML or REML, usually through Newton-Raphson, Fisher scoring, EM, or derivative-free optimization. REML is preferred for the final variance-component fit when the fixed-effect structure is fixed. *Slide source: `BIOS-767-Part-010.pdf`, slides 71-91. The EM derivation is on slides 74-91.*
+### EM algorithm for ML estimation
+
+For the simple case $R_i=\sigma^2I_{n_i}$, regard the random effects $b_i$ and residuals $\varepsilon_i$ as missing data. Starting from admissible values $(\beta^{(0)},D^{(0)},\sigma^{2(0)})$, repeat:
+
+1. **E-step.** Form $V_i^{(t)}=Z_iD^{(t)}Z_i^\mathsf T+\sigma^{2(t)}I_{n_i}$. Use the conditional-distribution formula for a partitioned multivariate normal distribution to compute $E(b_i\mid Y_i)$, $\operatorname{Var}(b_i\mid Y_i)$, and the analogous conditional moments of $\varepsilon_i$, all under the current parameter values. Then use
+
+   $$
+   E(b_ib_i^\mathsf T\mid Y_i)
+   =
+   \operatorname{Var}(b_i\mid Y_i)
+   +E(b_i\mid Y_i)E(b_i\mid Y_i)^\mathsf T
+   $$
+
+   to obtain the conditional expectations of the complete-data sufficient statistics $\sum_i b_ib_i^\mathsf T$ and $\sum_i\varepsilon_i^\mathsf T\varepsilon_i$.
+
+2. **M-step for the variance components.** Replace the unobserved sufficient statistics by their E-step expectations. The complete-data normal likelihood then gives
+
+   $$
+   D^{(t+1)}
+   =
+   \frac{1}{N}\sum_i E(b_ib_i^\mathsf T\mid Y_i),
+   \qquad
+   \sigma^{2(t+1)}
+   =
+   \frac{\sum_iE(\varepsilon_i^\mathsf T\varepsilon_i\mid Y_i)}
+   {\sum_i n_i}.
+   $$
+
+3. **Conditional update for the fixed effects.** Given the updated covariance parameters, maximize the marginal Gaussian likelihood in $\beta$. The normal score equations give the GLS estimator
+
+   $$
+   \beta^{(t+1)}
+   =
+   \left(\sum_iX_i^\mathsf T[V_i^{(t+1)}]^{-1}X_i\right)^{-1}
+   \sum_iX_i^\mathsf T[V_i^{(t+1)}]^{-1}Y_i.
+   $$
+
+Iterate until the parameter estimates or observed-data log-likelihood stabilize. Each exact EM iteration does not decrease the observed-data likelihood, although EM can converge slowly near the maximum. For more general $R_i(\alpha)$, the E-step still uses conditional Gaussian moments, while the M-step updates the covariance parameters $(D,\alpha)$, sometimes by numerical conditional maximization rather than closed-form formulas.
+
+**Output of the EM algorithm:** At convergence, the algorithm returns the ML estimates of the population parameters: $\widehat\beta$, $\widehat D$, and $\widehat\sigma^2$ in the simple model, or more generally $(\widehat\beta,\widehat\theta)$. The individual $b_i$'s are latent random variables, not additional likelihood parameters. Their empirical-Bayes/BLUP predictions are obtained from the final E-step:
+
+$$
+\widehat b_i
+=E(b_i\mid Y_i;\widehat\beta,\widehat D,\widehat R_i)
+=\widehat D Z_i^\mathsf T\widehat V_i^{-1}
+(Y_i-X_i\widehat\beta).
+$$
+
+The corresponding final conditional variance quantifies the uncertainty in predicting each $b_i$. Thus the E-step already computes the ingredients used for the individual predictions reported after fitting. Standard errors for $\widehat\beta$ and the variance-component estimates require an information-matrix or other post-fitting calculation; they are not supplied by the basic EM updates alone. *Slide source: `BIOS-767-Part-010.pdf`, slides 71-91.*
+
+Estimate $\theta$ by ML or REML, usually through Newton-Raphson, Fisher scoring, EM, or derivative-free optimization. REML is preferred for the final variance-component fit when the fixed-effect structure is fixed.
 
 ## BLUP and empirical Bayes prediction
 
@@ -125,7 +209,7 @@ $$
 \widehat Y_i^{\,\mathrm{SS}}=X_i\widehat\beta+Z_i\widehat b_i.
 $$
 
-The predictor shrinks the subject-specific least-squares estimate toward zero, hence the individual trajectory toward $X_i\widehat\beta$. Shrinkage is stronger when $n_i$ is small or within-subject noise is large relative to $D$. Random effects are latent-variable predictions, not additional fixed-effect coefficients. *Slide source: `BIOS-767-Part-011.pdf`, slides 28-46. The conditional-normal and shrinkage derivations are on slides 33-42.*
+Despite the hat notation, $\widehat b_i$ is conventionally called a **prediction** of the random effect, not an estimate of an additional model parameter. This predictor shrinks the unpooled subject-level fit toward zero, hence the predicted individual trajectory toward $X_i\widehat\beta$. Shrinkage is stronger when $n_i$ is small or within-subject noise is large relative to $D$. The $b_i$ are latent random quantities; their fitted values are predictions, whereas $\beta$, $D$, and the parameters of $R_i$ are estimated model parameters. *Slide source: `BIOS-767-Part-011.pdf`, slides 28-46. The conditional-normal and shrinkage derivations are on slides 33-42.*
 
 ## Inference
 
@@ -135,7 +219,7 @@ For $H_0:C\beta=c$, use a Wald $t$, $F$, or $\chi^2$ statistic based on $C\wideh
 
 ### Random effects and covariance components
 
-Testing $H_0:\tau^2=0$ is a boundary problem. The ordinary $\chi^2$ likelihood-ratio reference is invalid. In the specific comparison of $q$ correlated random effects with $q+1$, the slides use
+Testing $H_0:\tau_k^2=0$ for any random-effect variance component is a boundary problem. The ordinary $\chi^2$ likelihood-ratio reference is invalid. In the specific comparison of $q$ correlated random effects with $q+1$ (for example, testing a random-intercept model against a model with a correlated random intercept and random slope), the slides use
 
 $$
 G^2\ \dot\sim\ \tfrac12\chi_q^2+\tfrac12\chi_{q+1}^2.
@@ -150,14 +234,16 @@ Profile-likelihood or bootstrap intervals are preferable to symmetric Wald inter
 - $\beta$ describes the population mean and, under the identity link, also the conditional mean change holding $b_i$ fixed.
 - $b_{0i}$ and $b_{1i}$ describe subject deviations from population intercept and slope.
 - $d_{01}$ is scale- and origin-dependent; interpret it only after stating the time centering.
-- $\widehat b_i$ is conditional on the assumed $D$, $R_i$, and normal model.
+- The prediction $\widehat b_i$ is conditional on the assumed $D$, $R_i$, and normal model.
 - A fixed effect for a between-subject exposure is not identified by within-subject exposure changes; its subject-specific interpretation relies partly on the random-effect distribution.
 
 *Slide source: `BIOS-767-Part-010.pdf`, slides 65-70; `BIOS-767-Part-022.pdf`, slide 32.*
 
 ## When to apply
 
-Use an LMM when subject-specific trajectories, heterogeneity, prediction, variance decomposition, multilevel clustering, irregular timing, or MAR likelihood inference are important. Use a marginal covariance model when individual latent trajectories are unnecessary and direct modeling of $V_i$ is clearer.
+Use an LMM when **subject-specific** trajectories, heterogeneity, prediction, variance decomposition, multilevel clustering, irregular timing, or MAR likelihood inference are important. (In general, the scientific objective of mixed effects models is to make inferences or characterization about *individuals*). Use a marginal covariance model when individual latent trajectories are unnecessary and direct modeling of $V_i$ is clearer.
+
+
 
 ## External cross-check
 

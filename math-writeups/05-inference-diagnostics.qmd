@@ -58,13 +58,36 @@ $$
 r_i=Y_i-X_i\widehat\beta.
 $$
 
+The components of $r_i$ are generally correlated and need not have constant variance. Therefore, variation in the vertical spread of a raw residual-versus-fitted plot is not by itself evidence of heteroscedasticity, and standard homoscedasticity diagnostics that assume independent errors are not directly applicable. Although estimating $\beta$ means that the residual covariance is not exactly the error covariance, a useful working approximation is
+
+$$
+\operatorname{Cov}(r_i)
+\approx \operatorname{Cov}(\varepsilon_i)
+=\Sigma_i
+=V_i,
+$$
+
 If $\widehat V_i=L_iL_i^\mathsf T$ is a Cholesky factorization, the whitened residual is
 
 $$
 r_i^\star=L_i^{-1}r_i.
 $$
 
-Under a correct Gaussian mean and covariance, $r_i^\star$ is approximately uncorrelated with unit variance. Its $j$th component is a standardized innovation relative to the conditional mean given earlier ordered observations. Use residual-versus-fitted and Q-Q plots on $r_i^\star$, while remembering that estimation reduces exact independence. *Slide source: `BIOS-767-Part-012.pdf`, slides 8-14.*
+If the Gaussian mean and covariance parameters were known and the model were correct, this transformation would produce independent $N(0,1)$ components. In practice, $\beta$ and $V_i$ are estimated from the same data used to form the residuals, so the transformed residuals share parameter-estimation error. Consequently, their components are only approximately uncorrelated with unit variance, rather than exactly independent.
+
+The first component of $r_i^\star$ is the standardized residual for the first ordered measurement. For $k\geq 2$, the $k$th component is an estimate of the standardized innovation
+
+$$
+r_{ik}^\star
+\approx
+\frac{
+Y_{ik}-E(Y_{ik}\mid Y_{i1},\ldots,Y_{i,k-1})
+}{
+\sqrt{\operatorname{Var}(Y_{ik}\mid Y_{i1},\ldots,Y_{i,k-1})}
+}.
+$$
+
+Thus, $r_{ik}^\star$ measures how many conditional standard deviations $Y_{ik}$ lies above or below its model-implied conditional mean given that subject's earlier observations. Use residual-versus-fitted and Q-Q plots on $r_i^\star$. *Slide source: `BIOS-767-Part-012.pdf`, slides 8-14.*
 
 For an LMM:
 
@@ -133,7 +156,11 @@ e_{ij,(-i)}=Y_{ij}-x_{ij}^\mathsf T\widehat\beta_{(-i)},\qquad
 \mathrm{PRESS}_i=\sum_j e_{ij,(-i)}^2.
 $$
 
-Covariance-ratio and trace measures diagnose changes in precision even when coefficient displacement is small. *Slide source: `BIOS-767-Part-012.pdf`, slides 41-49.*
+Small values of these metrics indicate less influence of sample $i$ on the parameter estimates.
+
+Other influence criteria are concerned with the effect of an individual on the *precision* of parameter estimates, as opposed to the effect on estimates themselves, including the covariance-trace and covariance-ratio. *Slide source: `BIOS-767-Part-012.pdf`, slides 41-49.*
+
+The next step is to **inform the investigator of any potentially influential observations**. However, such observations are not necessarily outliers or data errors; they may instead reflect meaningful features of the data, such as distinct subgroups or unusual but valid response patterns.
 
 ## Model-class diagnostics
 

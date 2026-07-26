@@ -75,7 +75,7 @@ $$
 \widehat{\operatorname{Var}}_{\mathrm{rob}}(\widehat\beta)=B^{-1}MB^{-1}.
 $$
 
-If the marginal mean is correct and independent clusters satisfy regularity conditions, $\widehat\beta$ is consistent even when $R_i(\alpha)$ is misspecified; the sandwich covariance remains asymptotically valid. A better working correlation can improve efficiency. With few clusters, the uncorrected sandwich estimator can be downward biased; use a justified small-sample correction or cluster jackknife. *Slide source: `BIOS-767-Part-014.pdf`, slides 62-70.*
+If the marginal mean is correct and independent clusters satisfy regularity conditions, $\widehat\beta$ is consistent even when $R_i(\alpha)$ is misspecified; the empirical (sandwich) covariance remains asymptotically valid and our inferences using the sandwich standard errors are robust. **However, a better (closer-to-truth) working correlation can improve efficiency.** With few clusters, the ordinary sandwich estimator can be downward biased; use a justified small-sample correction or cluster jackknife. *Slide source: `BIOS-767-Part-014.pdf`, slides 62-70.*
 
 ## Association for binary outcomes
 
@@ -116,7 +116,7 @@ W=(C\widehat\beta-c)^\mathsf T
 \ \dot\sim\ \chi_r^2.
 $$
 
-QIC is an AIC-like criterion based on the independence quasi-likelihood and a model-complexity penalty. Smaller QIC is preferred, but QIC is not a calibrated test and has weaker theoretical support than likelihood criteria. Compare correlations with a common mean model and means with a common correlation strategy. *Slide source: `BIOS-767-Part-014.pdf`, slides 77-80; `BIOS-767-Part-019.pdf`, slides 13-16.*
+QIC is an AIC-like criterion based on the independence quasi-likelihood and a model-complexity penalty. Smaller QIC is preferred, but QIC is not a calibrated test and has weaker theoretical support than likelihood criteria. The model with the smallest QIC is preferable. Compare correlations with a common mean model and means with a common correlation strategy. *Slide source: `BIOS-767-Part-014.pdf`, slides 77-80; `BIOS-767-Part-019.pdf`, slides 13-16.*
 
 ## Interpretation
 

@@ -3,6 +3,97 @@ title: "3. Gaussian marginal models: mean and covariance"
 format: html
 ---
 
+::: {.callout-note title="Chapter summary"}
+### Model
+
+For independent subjects $i=1,\ldots,N$, the Gaussian marginal model is
+
+$$
+\mathbf Y_i
+=\mathbf X_i\boldsymbol\beta+\boldsymbol\varepsilon_i,
+\qquad
+\boldsymbol\varepsilon_i
+\sim N_{n_i}\!\left\{\mathbf 0,\mathbf V_i(\boldsymbol\theta)\right\},
+$$
+
+or, equivalently,
+
+$$
+\mathbf Y_i
+\sim N_{n_i}\!\left\{
+\mathbf X_i\boldsymbol\beta,\mathbf V_i(\boldsymbol\theta)
+\right\}.
+$$
+
+Here, $\boldsymbol\beta$ parameterizes the marginal mean structure, including fixed effects for treatment, time, treatment-by-time interaction, baseline covariates, and so forth. The matrix $\mathbf V_i(\boldsymbol\theta)$ is the within-subject covariance structure, parameterized by $\boldsymbol\theta$; it describes marginal variances and correlations among a subject's repeated outcomes.
+
+### Goal
+
+**The primary scientific target is usually** $\boldsymbol\beta$, or scientifically meaningful functions and contrasts of $\boldsymbol\beta$. The covariance parameter $\boldsymbol\theta$ is often a supporting or nuisance parameter rather than the principal estimand. Nevertheless, an appropriate $\mathbf V_i(\boldsymbol\theta)$ is important for efficient estimation of $\boldsymbol\beta$ and for valid model-based standard errors, tests, and confidence intervals. In some studies, the covariance or association structure may itself be scientifically relevant.
+
+### General workflow
+
+#### Stage 1: Initial fitting
+
+Begin with models that are sufficiently rich to support subsequent model selection:
+
+- Choose a rich preliminary mean structure $\mathbf X_i\boldsymbol\beta$: use a saturated mean model when feasible and the largest scientifically reasonable model otherwise. This reduces the risk that $\mathbf V_i(\boldsymbol\theta)$ will be forced to absorb systematic trends omitted from the mean.
+- Choose a plausible preliminary covariance structure $\mathbf V_i(\boldsymbol\theta)$ if it is not known a priori.
+
+#### Stage 2: Model selection
+
+- **Select the mean structure first.** Hold the preliminary covariance family $\mathbf V_i(\boldsymbol\theta)$ fixed and compare candidate mean structures using **ML**, not REML.
+  - For *nested* mean models, use an ML likelihood-ratio test or an appropriate Wald test.
+  - For *nonnested* mean models, compare ML-based AIC or BIC; smaller values are preferred.
+  - This step yields the selected, potentially reduced, mean structure $\mathbf X_i\boldsymbol\beta$.
+- **Then select the covariance structure.** Hold the selected mean structure $\mathbf X_i\boldsymbol\beta$ fixed and compare candidate covariance structures. REML is generally preferred to ML because it reduces finite-sample bias in estimating $\boldsymbol\theta$.
+  - For *nested* covariance models, a REML likelihood-ratio test may be used when the null hypothesis does not place a variance or covariance parameter on the boundary of its parameter space; otherwise, the usual chi-squared reference distribution is invalid.
+  - For *nonnested* covariance models, compare REML-based AIC or BIC; AIC is generally preferred here.
+  - This step yields the selected, potentially reduced, covariance structure $\mathbf V_i(\boldsymbol\theta)$.
+- Iterate the above two steps if necessary.
+
+#### Stage 3: Final fit using REML
+
+Using the selected mean and covariance structures, refit the complete final model using **REML**.[^why-final-reml] The computation can be understood as two conceptual steps, although software generally performs them together and iteratively:
+
+1. Estimate $\boldsymbol\theta$ by maximizing the restricted likelihood, giving $\widehat{\boldsymbol\theta}_{R}$ and $\widehat{\mathbf V}_i=\mathbf V_i(\widehat{\boldsymbol\theta}_{R})$.
+2. Given $\widehat{\mathbf V}_i$, estimate $\boldsymbol\beta$ by generalized least squares:
+
+   $$
+   \widehat{\boldsymbol\beta}_{R}
+   =
+   \left(
+   \sum_{i=1}^N
+   \mathbf X_i^\mathsf T\widehat{\mathbf V}_i^{-1}\mathbf X_i
+   \right)^{-1}
+   \left(
+   \sum_{i=1}^N
+   \mathbf X_i^\mathsf T\widehat{\mathbf V}_i^{-1}\mathbf Y_i
+   \right).
+   $$
+
+In other words, the final REML fit proceeds as
+
+$$
+\widehat{\boldsymbol\theta}_{R}
+\;\longrightarrow\;
+\widehat{\mathbf V}_i
+=\mathbf V_i(\widehat{\boldsymbol\theta}_{R})
+\;\longrightarrow\;
+\widehat{\boldsymbol\beta}_{R}
+\text{ and }
+\widehat{\operatorname{SE}}\!\left(
+\widehat{\boldsymbol\beta}_{R}
+\right).
+$$
+
+Thus, the final fit provides the estimated marginal mean $\widehat{\boldsymbol\mu}_i=\mathbf X_i\widehat{\boldsymbol\beta}_{R}$ and the estimated covariance matrix $\widehat{\mathbf V}_i=\mathbf V_i(\widehat{\boldsymbol\theta}_{R})$. It also provides estimates of the fixed effects and their contrasts, together with standard errors, tests, and confidence intervals, as well as estimates of the covariance parameters and, when available, their uncertainty measures.[^ml-versus-reml]
+:::
+
+[^why-final-reml]: **Why use REML for the final fit?** Ordinary ML estimates $\boldsymbol\theta$ without a degrees-of-freedom adjustment for having estimated $\boldsymbol\beta$ from the same data. It therefore tends to underestimate variance components, particularly in small samples or when the mean model contains many fixed-effect parameters. REML accounts for the loss of information due to estimating $\boldsymbol\beta$ and usually reduces this finite-sample bias.
+
+[^ml-versus-reml]: **ML versus REML.** ML is used when comparing different fixed-effect structures. Each ML fit estimates both $\boldsymbol\beta$ and $\boldsymbol\theta$, but the ML likelihood is used at this stage to evaluate the mean structure. REML is used after the fixed-effect structure has been fixed. Although the restricted likelihood directly estimates only $\boldsymbol\theta$, the final REML fit estimates $\boldsymbol\beta$ by GLS using $\mathbf V_i(\widehat{\boldsymbol\theta}_{R})$; it is therefore used both for inference about the fixed effects and for covariance estimation.
+
 **Slides covered.** `BIOS-767-Part-007.pdf`, slides 4-71; `BIOS-767-Part-008.pdf`, slides 2-49; `BIOS-767-Part-009.pdf`, slides 4-125; `BIOS767-Part9-Notes-v3.pdf`, document pp. 1-23; `Lecture-07-Part2.pdf`, document pp. 1-12.
 
 ## Motivation
@@ -10,11 +101,12 @@ format: html
 The Gaussian marginal model separates the population mean trajectory from within-subject covariance:
 
 $$
-Y_i=X_i\beta+\varepsilon_i,\qquad
-\varepsilon_i\sim N_{n_i}\{0,\Sigma_i(\theta)\}.
+\mathbf Y_i=\mathbf X_i\boldsymbol\beta+\boldsymbol\varepsilon_i,\qquad
+\boldsymbol\varepsilon_i\sim
+N_{n_i}\!\left\{\mathbf 0,\mathbf V_i(\boldsymbol\theta)\right\}.
 $$
 
-It handles unequal $n_i$, irregular measurement times, continuous/discrete covariates, and likelihood-based MAR inference. The estimand is $E(Y_i\mid X_i)=X_i\beta$; covariance parameters are nuisance unless association is itself scientific.
+It handles unequal $n_i$, irregular measurement times, continuous or discrete covariates, and likelihood-based inference under missing at random. **Our primary scientific goal is usually to estimate the fixed effects $\boldsymbol\beta$, not the covariance parameters $\boldsymbol\theta$.** Nevertheless, $\mathbf V_i(\boldsymbol\theta)$ must be modeled adequately because it determines the efficiency of $\widehat{\boldsymbol\beta}$ and the validity of model-based standard errors and tests; the covariance may also be a scientific target when within-subject association is of substantive interest.
 
 ## Mean formulations
 
@@ -144,7 +236,8 @@ $$
 \mathrm{BIC}=-2\ell+q\log N^\star,
 $$
 
-where the definition of $N^\star$ must be kept fixed across candidates. Information criteria rank models; they do not test a calibrated null. *Slide source: `BIOS-767-Part-009.pdf`, slides 79-88 and 111-118.*
+where the definition of $N^\star$ must be kept fixed across candidates. Smaller values of AIC and BIC indicate a better model.
+Information criteria rank models; they do not test a calibrated null. *Slide source: `BIOS-767-Part-009.pdf`, slides 79-88 and 111-118.*
 
 ## Inference and interpretation
 

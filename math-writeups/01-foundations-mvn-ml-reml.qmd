@@ -94,9 +94,9 @@ $$
 
 ML alternates between estimating $\beta$ and covariance parameters because each estimator depends on the other. *Slide source: `BIOS-767-Part-007.pdf`, slides 22-27.*
 
-## WLS without a full distribution
+## WLS estimation of $\beta$ without a full distribution
 
-Assume only
+WLS targets the mean-model parameter $\beta$. Assume only
 
 $$
 E(Y_i)=X_i\beta,\qquad \operatorname{Var}(Y_i)=\Sigma_i,
@@ -136,9 +136,18 @@ $$
 
 It remains consistent under covariance misspecification, provided clusters are independent, the mean is correct, regularity conditions hold, and $N$ is sufficiently large. It does not protect against a misspecified mean. *Slide source: `BIOS-767-Part-007.pdf`, slides 55-59 and 64-67.*
 
-## ML versus REML
+## ML versus REML for covariance estimation
 
-For $Y\sim N(X\beta,V_\theta)$, the profiled ML criterion is
+For $Y\sim N_n(X\beta,V_\theta)$, let $\theta$ parameterize the covariance structure and let $p=\operatorname{rank}(X)$. Both ML and REML are used to estimate $\theta$; after obtaining $\widehat\theta$, the fixed effects are estimated by GLS,
+
+$$
+\widehat\beta(\widehat\theta)
+=
+\left(X^\mathsf TV_{\widehat\theta}^{-1}X\right)^{-1}
+X^\mathsf TV_{\widehat\theta}^{-1}Y.
+$$
+
+ML jointly maximizes $\ell(\beta,\theta)$ over $(\beta,\theta)$. Equivalently, profiling out $\beta$ gives
 
 $$
 \ell_{\mathrm{ML}}(\theta)
@@ -148,7 +157,14 @@ $$
 \right]+C.
 $$
 
-REML uses $N-p$ linearly independent error contrasts $A^\mathsf TY$ satisfying $A^\mathsf TX=0$. Its profiled criterion is
+REML instead constructs a likelihood for $\theta$ from $n-p$ linearly independent error contrasts $A^\mathsf TY$ satisfying $A^\mathsf TX=0$. Since
+
+$$
+A^\mathsf TY=A^\mathsf T\varepsilon
+\sim N_{n-p}(0,A^\mathsf TV_\theta A),
+$$
+
+this likelihood contains $\theta$ but not $\beta$. Equivalently, REML can be derived by integrating the Gaussian likelihood over $\beta$ with respect to a flat measure; it does not mean that $\beta$ is absent from the fitted model. The resulting criterion is
 
 $$
 \ell_{\mathrm{REML}}(\theta)
@@ -159,13 +175,15 @@ $$
 \right]+C_X.
 $$
 
-The adjustment accounts for fixed-effect estimation and usually reduces small-sample bias in covariance estimation. In the iid normal model, ML divides the residual sum of squares by $N$, whereas REML divides by $N-p$. *Slide source: `BIOS-767-Part-003.pdf`, slides 15-18 and 24-31.*
+Thus ML estimates $\beta$ and $\theta$ from the full likelihood without a residual degrees-of-freedom correction, whereas REML estimates $\theta$ from the portion of $Y$ orthogonal to the fixed-effect space. The REML adjustment accounts for estimating $p$ fixed-effect parameters and usually reduces small-sample bias in covariance estimation. In the iid normal model, ML divides the residual sum of squares by $n$, whereas REML divides by $n-p$. *Slide source: `BIOS-767-Part-003.pdf`, slides 15-18 and 24-31.*
 
-Because the REML transformation depends on $X$:
+### Implication for choosing ML or REML
 
-- compare nested mean models under ML with the same covariance structure;
-- compare covariance models under REML only when the fixed-effect design is identical;
-- obtain the final covariance estimates and fixed-effect inference under REML when the mean model has been selected.
+The restricted likelihood is defined from the residual subspace $\mathcal C(X)^\perp$. Changing $X$ changes the error contrasts and therefore changes the restricted likelihood being evaluated. For valid likelihood-based model comparison, use the following rules:
+
+- To compare fixed-effect mean models $X_0$ and $X_1$, fit both by ML using the same covariance-model family $V_\theta$; estimate $\theta$ separately under each mean model.
+- To compare covariance structures $V_{\theta,0}$ and $V_{\theta,1}$ by REML, use the same fixed-effect design $X$ in both models.
+- After selecting the mean and covariance structures, refit by REML to estimate $\theta$, then estimate $\beta$ by GLS using $V_{\widehat\theta_{\mathrm{REML}}}$.
 
 *Slide source: `BIOS-767-Part-003.pdf`, slides 29-31; `BIOS-767-Part-009.pdf`, slides 80-88 and 111-123.*
 

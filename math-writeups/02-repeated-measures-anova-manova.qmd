@@ -9,7 +9,16 @@ format: html
 
 Classical repeated-measures methods target group, time, and group-by-time effects when all subjects share a small fixed visit grid. They provide exact finite-sample tests under strong covariance assumptions but are poorly suited to irregular time, substantial missingness, or continuous time effects.
 
-Let $h=1,\ldots,H$ index group, $i=1,\ldots,n_h$ subject within group, and $j=1,\ldots,n$ occasion.
+Let $h=1,\ldots,H$ index group, $i=1,\ldots,n_h$ subject within group, and $j=1,\ldots,n$ measurement occasion (visit or time point). A **group** is a between-subject treatment, exposure, or other category; each subject belongs to exactly one group.
+
+| Group $h$ | Occasion $j=1$ | Occasion $j=2$ | $\cdots$ | Occasion $j=n$ |
+|---|---|---|---|---|
+| $h=1$ | $\{Y_{1i1}:i=1,\ldots,n_1\}$ | $\{Y_{1i2}:i=1,\ldots,n_1\}$ | $\cdots$ | $\{Y_{1in}:i=1,\ldots,n_1\}$ |
+| $h=2$ | $\{Y_{2i1}:i=1,\ldots,n_2\}$ | $\{Y_{2i2}:i=1,\ldots,n_2\}$ | $\cdots$ | $\{Y_{2in}:i=1,\ldots,n_2\}$ |
+| $\vdots$ | $\vdots$ | $\vdots$ | $\ddots$ | $\vdots$ |
+| $h=H$ | $\{Y_{Hi1}:i=1,\ldots,n_H\}$ | $\{Y_{Hi2}:i=1,\ldots,n_H\}$ | $\cdots$ | $\{Y_{Hin}:i=1,\ldots,n_H\}$ |
+
+Each row is one group; within a row, the same $n_h$ subjects are followed across occasions.
 
 ## Univariate repeated-measures ANOVA
 
@@ -56,7 +65,9 @@ $$
 
 for an orthonormal $C$, equivalently $\operatorname{Var}(a^\mathsf TY)$ is constant over all unit-norm contrasts $a^\mathsf T\mathbf1_n=0$. Compound symmetry implies sphericity, but sphericity is weaker.
 
-If sphericity fails, the usual within-subject $F$ tests can be anti-conservative. Greenhouse-Geisser or Huynh-Feldt corrections replace degrees of freedom $(\nu_1,\nu_2)$ by $(\widehat\epsilon\nu_1,\widehat\epsilon\nu_2)$, where
+Sphericity supplies the common variance scaling needed for the usual univariate within-subject $F$ statistics to have their stated null $F$ distributions. It therefore permits valid Type I error control without estimating an unrestricted covariance matrix.
+
+If sphericity fails, the usual within-subject $F$ tests can be anti-conservative: the actual probability of rejecting a true null can exceed the nominal level $\alpha$, so $p$-values may be too small. Greenhouse-Geisser or Huynh-Feldt corrections replace degrees of freedom $(\nu_1,\nu_2)$ by $(\widehat\epsilon\nu_1,\widehat\epsilon\nu_2)$, where
 
 $$
 \widehat\epsilon_{\mathrm{GG}}
@@ -92,6 +103,8 @@ Let $M=(\mu_{hj})_{H\times n}$. Hypotheses are linear functions $C_BMU=0$, where
   \operatorname{df}=n-1.
   $$
 
+![Schematic mean profiles under the three null hypotheses. Parallelism means a constant group difference across occasions; coincidence means identical group profiles; flatness means no occasion effect.](figures/profile-hypotheses.svg){#fig-profile-hypotheses width="100%"}
+
 *Slide source: `BIOS-767-Part-005.pdf`, slides 29-40.*
 
 The exact $F$ ratios use distinct between-subject and within-subject error strata. Their expected-mean-square derivation is omitted in the slides; the result is stated on `BIOS-767-Part-005.pdf`, slides 35-40.
@@ -100,13 +113,15 @@ The exact $F$ ratios use distinct between-subject and within-subject error strat
 
 ### Model
 
+MANOVA (multivariate analysis of variance) jointly analyzes a vector of responses, whereas repeated-measures ANOVA analyzes a scalar response using a within-/between-subject decomposition and requires sphericity for its usual within-subject tests.
+
 Treat each complete subject profile as a multivariate response:
 
 $$
 Y_i\sim N_n(M^\mathsf Ta_i,\Sigma),
 $$
 
-where $a_i$ encodes group membership and $\Sigma$ is an unrestricted, common covariance matrix with $n(n+1)/2$ parameters. MANOVA avoids sphericity but requires complete profiles on a common schedule and can lose power from estimating many covariance parameters. *Slide source: `BIOS-767-Part-006.pdf`, slides 5-9.*
+where $a_i$ encodes group membership and $\Sigma$ is the within-subject covariance matrix, with $\Sigma_{jk}=\operatorname{Cov}(Y_{ij},Y_{ik})$. The standard model assumes the same unrestricted $\Sigma$ for every subject and group: subjects may have different means through $a_i$, but their variance and correlation structure is assumed homogeneous. This common-$\Sigma$ assumption pools information across subjects; it is an assumption, not a mathematical necessity. MANOVA avoids sphericity but requires complete profiles on a common schedule and can lose power from estimating the $n(n+1)/2$ covariance parameters. *Slide source: `BIOS-767-Part-006.pdf`, slides 5-9.*
 
 ### Hypothesis and error matrices
 
@@ -147,7 +162,7 @@ Each statistic is transformed to an exact or approximate $F$ reference distribut
 5. Test parallelism first. Conditional follow-up questions are coincidence and flatness.
 6. Use estimable contrasts for specific visit differences and adjust multiplicity when several are reported.
 
-A nonsignificant interaction does not require refitting merely to obtain the corresponding Type III main-effect test: Type III sums of squares are adjusted for the remaining terms. Refitting changes the model and may change residual variance; whether to refit is an estimand/modeling decision. *Slide source: `anova-refitting.pdf`, document pp. 1-5.*
+A Type III main-effect test compares adjusted marginal means for that factor, averaging over the levels of the other factor while retaining all other model terms, including the interaction. For example, the group main effect tests $C_BM\mathbf1_n/n=0$, and the occasion main effect tests $\mathbf1_H^\mathsf TMU/H=0$. A nonsignificant interaction does not require refitting merely to obtain the corresponding Type III main-effect test: Type III sums of squares are adjusted for the remaining terms. Refitting changes the model and may change residual variance; whether to refit is an estimand/modeling decision. *Slide source: `anova-refitting.pdf`, document pp. 1-5.*
 
 ## Interpretation
 
