@@ -15,13 +15,13 @@ Conditional on $b_i$,
 
 $$
 Y_{ij}\mid b_i\ \sim\ \text{exponential family},\qquad
-g(\mu_{ij}^{c})=x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb_i+o_{ij},
+g(\mu_{ij})=x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb_i+o_{ij},
 $$
 
 where
 
 $$
-\mu_{ij}^{c}=E(Y_{ij}\mid b_i),\qquad
+\mu_{ij}=E(Y_{ij}\mid b_i),\qquad
 b_i\stackrel{\mathrm{iid}}{\sim}N_q(0,D).
 $$
 
@@ -48,8 +48,8 @@ For a probit random-intercept model, the residual latent variance is $1$, giving
 ### Count/rate model
 
 $$
-Y_{ij}\mid b_i\sim\operatorname{Poisson}(\mu_{ij}^{c}),\qquad
-\log\mu_{ij}^{c}=x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb_i+\log e_{ij}.
+Y_{ij}\mid b_i\sim\operatorname{Poisson}(\mu_{ij}),\qquad
+\log\mu_{ij}=x_{ij}^\mathsf T\beta+z_{ij}^\mathsf Tb_i+\log e_{ij}.
 $$
 
 Then $e^{\beta_k}$ is a conditional rate ratio at fixed $b_i$. Negative-binomial or observation-level random effects can represent extra-Poisson variation; zero-inflated or hurdle components represent structurally distinct zero processes.
@@ -90,7 +90,14 @@ L_i(\beta,D)=
 \phi_q(b_i;0,D)\,db_i,
 $$
 
-and $L=\prod_iL_i$. Except in special cases, the integral has no closed form. *Slide source: `BIOS-767-Part-015.pdf`, slides 20-23.*
+and $L(\beta,D)=\prod_iL_i(\beta,D)$. Because the random effects are unobserved, maximum-likelihood estimation of $\beta$ and $D$ is based on this marginal density, obtained by integrating the $b_i$ out of the joint density. Thus,
+
+$$
+(\widehat\beta,\widehat D)
+=\arg\max_{\beta,D}\sum_i\log L_i(\beta,D).
+$$
+
+Except in special cases, the marginal-likelihood integral has no closed form. *Slide source: `BIOS-767-Part-015.pdf`, slides 20-23 and 59-60.*
 
 Common approximations are:
 
@@ -98,17 +105,26 @@ Common approximations are:
 - Adaptive Gauss-Hermite quadrature: weighted evaluation around the subject-specific mode; accuracy increases with nodes but cost grows rapidly with $q$.
 - Penalized quasi-likelihood (PQL): linearizes the mean; computationally convenient but can be biased for binary data with small cluster sizes or large variance.
 
-Check stability across quadrature accuracy when feasible. *Slide source: `BIOS-767-Part-015.pdf`, slides 22-24 and 58-63.*
+Inference depends on the fitting method:
 
-## Random effects and inference
+- Adaptive Gauss-Hermite quadrature or Laplace: likelihood-ratio and Wald tests may be used, with accuracy depending on the marginal-likelihood approximation.
+- PQL/Taylor linearization: likelihood-ratio tests are invalid; Wald tests are approximately valid.
+- Variance components: an ordinary $\chi^2$ likelihood-ratio reference is invalid because the null is on the boundary; use a boundary-adjusted test or parametric bootstrap.
 
-Empirical-Bayes predictions use
+Check stability across quadrature accuracy when feasible. *Slide source: `BIOS-767-Part-015.pdf`, slides 22-24 and 59-63.*
+
+For the random effects, empirical-Bayes predictions use
 
 $$
 \widehat b_i\approx E(b_i\mid Y_i;\widehat\beta,\widehat D),
 $$
 
-computed from the approximate conditional posterior. They are shrinkage predictions and inherit assumptions about $D$. Fixed-effect Wald/LRT inference also inherits numerical-integration accuracy. Variance-component tests are boundary problems; a parametric bootstrap is often safer than an ordinary $\chi^2$ LRT.
+computed from the approximate conditional posterior. These are shrinkage predictions of the subject-specific random effects $b_i$, and they inherit assumptions about $D$.
+
+## Parameter inference
+
+This concerns inference for the fixed effects $\beta$ and variance components in $D$, not prediction of the $b_i$. For quadrature- or Laplace-based likelihood fits, fixed-effect Wald/LRT inference inherits the accuracy of the marginal-likelihood approximation; the separate PQL limitation described above still applies. Variance-component tests are boundary problems, so a parametric bootstrap is often safer than an ordinary $\chi^2$ LRT.
+
 
 ## Multilevel extension
 
@@ -128,11 +144,13 @@ $$
 =\log T_{ij}+\beta_0+\beta_1x_{ij}+b_j.
 $$
 
-The offset makes $e^{\beta_1}$ a conditional rate ratio rather than a raw-count ratio. *Slide source: `BIOS-767-Part-016.pdf`, slides 14-21.*
+The offset makes $e^{\beta_1}$ a conditional rate ratio rather than a raw-count ratio (a per-unit-exposure comparison at fixed $b_j$, unaffected by differing $T_{ij}$). *Slide source: `BIOS-767-Part-016.pdf`, slides 14-21.*
+
+**Note:** Including $\log T_{ij}$ adjusts for known differences in population size or exposure time, so the model targets the conditional rate $E(Y_{ij}\mid b_j)/T_{ij}$ rather than the raw expected count. More generally, a known observation-specific offset standardizes for unequal opportunities for events to occur.
 
 ## Interpretation
 
-**Caveat:** In a GLMM, the fixed effects \(\beta\) are subject-specific: they characterize covariate effects conditional on the subject's random effects. With a nonlinear link, averaging over the random effects generally does not preserve \(x_{ij}^{\mathsf T}\beta\), so these coefficients do not generally have a population-average interpretation; the identity-link LMM is an exception. *Slide source: `BIOS-767-Part-014.pdf`, slides 10-43; `BIOS-767-Part-015.pdf`, slide 17.*
+**Caveat:** In a GLMM, the fixed-effect coefficients $\beta$ have subject-specific interpretations: they describe covariate effects conditional on the subject's random effects. With a nonlinear link, integrating over the random effects generally does not preserve the linear predictor $x_{ij}^{\mathsf T}\beta$. Consequently, these coefficients generally do not have population-average interpretations. The identity-link LMM is an exception. *Slide source: `BIOS-767-Part-014.pdf`, slides 10-43; `BIOS-767-Part-015.pdf`, slide 17.*
 
 - Binary: $e^{\beta_k}$ is a conditional odds ratio at the same random-effect value.
 - Count: $e^{\beta_k}$ is a conditional rate ratio at the same random-effect value and exposure scale.
@@ -143,7 +161,7 @@ The offset makes $e^{\beta_1}$ a conditional rate ratio rather than a raw-count 
 
 ## When to apply
 
-Use a GLMM when conditional effects, latent heterogeneity, cluster-specific prediction, multilevel pooling, or a full likelihood are central. Use GEE when the population-average mean is the target and subject-specific prediction is unnecessary.
+Use a GLMM when *subject-specific* features are central, including conditional covariate effects, latent heterogeneity, cluster-specific prediction, multilevel pooling, or full-likelihood inference. Use GEE when the population-average mean is the primary target and subject-specific prediction is unnecessary. Both approaches account for within-subject correlation, but they target different estimands and do so through different modeling frameworks.
 
 ## External cross-check
 

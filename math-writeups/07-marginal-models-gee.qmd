@@ -35,9 +35,11 @@ V_i(\beta,\alpha,\phi)
 =\phi A_i^{1/2}R_i(\alpha)A_i^{1/2}.
 $$
 
-Common $R_i(\alpha)$ choices are independence, exchangeable, AR(1), and unstructured. $V_i$ is a working covariance; the full joint distribution of $Y_i$ need not be specified. *Slide source: `BIOS-767-Part-014.pdf`, slides 38-48.*
+Here $V_i$ is the working approximation to $\operatorname{Cov}(Y_i\mid X_i)$; it equals the true conditional covariance only if the variance function and working correlation are correctly specified. Common $R_i(\alpha)$ choices are independence, exchangeable, AR(1), and unstructured. The full joint distribution of $Y_i$ need not be specified. *Slide source: `BIOS-767-Part-014.pdf`, slides 38-48.*
 
 ## Estimation by generalized estimating equations
+
+**Clarification:** A weighted estimating equation is a general framework. For independent GLM-type responses specified only through their mean-variance relationship, it is called a quasi-score or quasi-likelihood estimating equation. GEE extends this framework to correlated or clustered responses by weighting cluster-level residuals with an inverse working covariance matrix. Thus, every GEE is a weighted estimating equation, but not every weighted estimating equation is a GEE.
 
 Let
 
@@ -50,6 +52,18 @@ The GEE estimator solves
 $$
 U(\beta)=\sum_{i=1}^ND_i^\mathsf TV_i^{-1}(Y_i-\mu_i)=0.
 $$
+
+With $V_i$ held fixed, the $\beta$-update has a generalized least-squares interpretation and can be viewed as minimizing
+
+$$
+Q(\beta)=
+\sum_{i=1}^N
+\{Y_i-\mu_i(\beta)\}^\mathsf T
+V_i^{-1}
+\{Y_i-\mu_i(\beta)\}.
+$$
+
+Thus residual directions with greater working variance receive less weight. Because $V_i$ is subsequently updated, this is a fitting-step interpretation rather than, in general, a single fixed objective for the entire algorithm.
 
 Because $V_i$ depends on $\beta,\alpha,\phi$, fitting alternates between solving $U(\beta)=0$ and estimating $\alpha,\phi$ from Pearson residuals. *Slide source: `BIOS-767-Part-014.pdf`, slides 49-61. The estimating-equation derivation is on slides 49-51.*
 
@@ -116,7 +130,7 @@ W=(C\widehat\beta-c)^\mathsf T
 \ \dot\sim\ \chi_r^2.
 $$
 
-QIC is an AIC-like criterion based on the independence quasi-likelihood and a model-complexity penalty. Smaller QIC is preferred, but QIC is not a calibrated test and has weaker theoretical support than likelihood criteria. The model with the smallest QIC is preferable. Compare correlations with a common mean model and means with a common correlation strategy. *Slide source: `BIOS-767-Part-014.pdf`, slides 77-80; `BIOS-767-Part-019.pdf`, slides 13-16.*
+QIC is an AIC-like criterion based on the independence quasi-likelihood and a model-complexity penalty. Smaller QIC is preferred, but QIC is not a calibrated test and has weaker theoretical support than likelihood criteria. **The model with the smallest QIC is preferable.** Compare correlations with a common mean model and means with a common correlation strategy. *Slide source: `BIOS-767-Part-014.pdf`, slides 77-80; `BIOS-767-Part-019.pdf`, slides 13-16.*
 
 ## Interpretation
 

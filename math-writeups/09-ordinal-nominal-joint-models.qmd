@@ -25,7 +25,7 @@ $$
 \alpha_1<\cdots<\alpha_{K-1}.
 $$
 
-The common $\beta$ across cut points is the proportional-odds assumption. With this sign convention, $e^{\beta_\ell}$ is the odds ratio for $Y\le k$ versus $Y>k$, common to every $k$. A positive coefficient shifts probability toward lower-coded categories. Some software uses $\alpha_k-x^\mathsf T\beta$; always check the implemented sign. *Slide source: `BIOS-767-Part-017.pdf`, slides 4-9.*
+The common $\beta$ across cut points is the proportional-odds assumption. With this sign convention, $e^{\beta_\ell}$ is the odds ratio for $Y\le k$ versus $Y>k$, same for every $k$, that is caused by one unit increase in predictor $\ell$. A positive coefficient shifts probability toward lower-coded categories (i.e., the $Y\le k$ direction). Some software uses $\alpha_k-x^\mathsf T\beta$; always check the implemented sign. *Slide source: `BIOS-767-Part-017.pdf`, slides 4-9.*
 
 Category probabilities follow from cumulative probabilities:
 
@@ -67,9 +67,11 @@ $$
 =\alpha_k+x_{ij}^\mathsf T\beta_k.
 $$
 
-Then $e^{\beta_{k\ell}}$ is the relative-risk ratio for category $k$ versus $1$ per unit increase in $x_\ell$. The model does not exploit ordering and estimates $(K-1)$ slope vectors. A random-intercept version replaces the right side by $\alpha_k+x_{ij}^\mathsf T\beta_k+\lambda_kb_i$. *Slide source: `BIOS-767-Part-017.pdf`, slides 27-39.*
+Then $e^{\beta_{k\ell}}$ is the relative-risk ratio for category $k$ versus $1$ per unit increase in $x_\ell$. *The model assumes no ordering of the response variable*, and estimates $(K-1)$ slope vectors. A random-intercept version replaces the right side by $\alpha_k+x_{ij}^\mathsf T\beta_k+\lambda_kb_i$. *Slide source: `BIOS-767-Part-017.pdf`, slides 27-39.*
 
-## Shared-random-effect joint model
+## Shared-random-effect joint model 
+
+Joint modeling is useful when repeated outcomes are scientifically linked because it estimates outcome-specific covariate effects while accounting for their within-subject cross-outcome dependence.
 
 For two outcomes on possibly different scales,
 
@@ -83,7 +85,7 @@ b_i&\sim N(0,\sigma_b^2).
 \end{aligned}
 $$
 
-Conditional independence is assumed across outcomes and times given $b_i$. The loading $\lambda$ aligns scales and determines the direction and magnitude of shared latent association. Identification requires fixing one loading or the random-effect variance scale. *Slide source: `BIOS-767-Part-017.pdf`, slides 40-48.*
+Conditional independence is assumed across outcomes and times given $b_i$. The loading $\lambda$ is estimated from the joint response data and informs the direction and magnitude of the latent association; in this parameterization, the induced latent covariance is $\lambda\sigma_b^2$. To identify the scale of $b_i$, the loading for one reference response is fixed at $1$ as above, and only the loadings for the other responses are freely estimated; alternatively, one may fix the random-effect variance scale. *Slide source: `BIOS-767-Part-017.pdf`, slides 40-48.*
 
 For mixed outcome types, each conditional distribution and link may differ. The integrated likelihood is
 
@@ -111,11 +113,13 @@ Report the precise comparison encoded by the link:
 - cumulative odds: $Y\le k$ versus $Y>k$;
 - generalized-logit relative risk: category $k$ versus the reference category;
 - GLMM coefficient: comparison conditional on the same latent effect;
-- shared-effect loading: latent association scale, not a direct causal effect.
+- shared-effect loading: $\lambda$ scales the shared latent subject effect $b_i$ across outcomes; the induced latent-scale association is $\operatorname{Cov}(\lambda b_i,b_i)=\lambda\sigma_b^2$, not a direct causal effect.
 
 ## When to apply
 
-Use proportional odds when categories are ordered and a common cumulative effect is defensible. Use partial proportional odds for selective violations. Use generalized logits when ordering is absent or scientifically inappropriate. Use shared-random-effect models when several repeated outcomes are scientifically linked and their latent dependence is itself of interest.
+- Use proportional odds when categories are ordered and a common cumulative-logit effect, $\beta_k=\beta$ for $k=1,\ldots,K-1$, is defensible. Use partial proportional odds for selective violations. 
+- Use generalized logits when ordering is absent or scientifically inappropriate. 
+- Use shared-random-effect models when several repeated outcomes are scientifically linked and their latent dependence is itself of interest.
 
 ## External cross-check
 

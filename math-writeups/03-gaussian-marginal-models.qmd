@@ -112,14 +112,34 @@ It handles unequal $n_i$, irregular measurement times, continuous or discrete co
 
 ### Response-profile model
 
-For group $G_i\in\{0,1\}$ and visits $j=1,\ldots,n$,
+For group $G_i\in\{0,1\}$ and visits $j=1,\ldots,n$, let $j=1$ denote baseline. The preferred formulation depends on the study design.
+
+**Observational studies: retain baseline and estimate separate group means.** Use the unconstrained response-profile model
 
 $$
 E(Y_{ij})=\sum_{k=1}^n\beta_{0k}I(j=k)
 +G_i\sum_{k=1}^n\beta_{1k}I(j=k).
 $$
 
-This is saturated in visit within group. It estimates every group-visit cell mean and supports arbitrary profile contrasts. Baseline may be retained as an outcome with either group-specific baseline means or a common baseline mean in randomized studies. Conditioning follow-up outcomes on baseline as a covariate changes the estimand and the missing-data contribution. *Slide source: `BIOS-767-Part-009.pdf`, slides 14-57.*
+This model makes no assumption that the groups had equal baseline means:
+
+$$
+E(Y_{i1}\mid G_i=0)=\beta_{01},\qquad
+E(Y_{i1}\mid G_i=1)=\beta_{01}+\beta_{11}.
+$$
+
+It is saturated in visit within group, estimates every group-visit cell mean, and supports arbitrary profile contrasts.
+
+**Randomized studies: retain baseline and impose equal population means at baseline.** Randomization justifies the constraint $\beta_{11}=0$, giving
+
+$$
+E(Y_{ij})=\sum_{k=1}^n\beta_{0k}I(j=k)
++G_i\sum_{k=2}^n\beta_{1k}I(j=k).
+$$
+
+Thus both groups share baseline mean $\beta_{01}$, while $\beta_{1k}$ is the treatment-group mean difference at follow-up visit $k\ge2$. This constrained response-profile model does not force the observed sample baseline means to be equal; it assumes equality of the randomized-group population means and may improve precision.
+
+Both strategies retain baseline in the outcome vector. In contrast, conditioning follow-up outcomes on baseline as a covariate changes the estimand and the contribution of subjects with missing baseline or follow-up outcomes. *Slide source: `BIOS-767-Part-009.pdf`, slides 14-57.*
 
 ### Linear and polynomial trajectories
 
