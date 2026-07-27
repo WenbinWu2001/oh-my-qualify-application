@@ -116,6 +116,13 @@ fixed_re_zero_rate <- predict(pois_agq, type = "response", re.form = NA)
 head(cbind(conditional_rate, fixed_re_zero_rate))
 ```
 
+### Explanation
+
+The argument `parm = "beta_"` specifies that confidence intervals should be computed for the fixed-effect coefficients. In an `lmer()` or `glmer()` model, the parameter types include:
+
+- Fixed-effect coefficients (`beta_`)
+- Random-effects variance and covariance parameters (`theta_`)
+
 Fixed-effect exponentials are subject-specific conditional rate ratios at equal random effects. The random-intercept variance is heterogeneity on the log-rate scale; `ranef()` returns empirical-Bayes conditional modes. `re.form = NULL` predicts for fitted subjects conditional on their random effects; `re.form = NA` sets random effects to zero and is not, for a nonlinear link, the marginal population mean.
 
 Under a logistic random-intercept model,
