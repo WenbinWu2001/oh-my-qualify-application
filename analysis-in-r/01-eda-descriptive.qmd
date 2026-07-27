@@ -8,6 +8,10 @@ execute: {echo: true, warning: false, message: false}
 [MVN, covariance, and GLS foundations](../math-writeups/01-foundations-mvn-ml-reml.qmd) · [Gaussian mean and covariance models](../math-writeups/03-gaussian-marginal-models.qmd) · [Missing-data mechanisms](../math-writeups/10-missing-data.qmd)
 :::
 
+::: {.callout-tip title="R workflow companions"}
+[Data manipulation and tables](00-data-manipulation-tables.qmd) · [Common ggplot2 visualizations](00-visualization.qmd)
+:::
+
 ```{r}
 #| label: setup
 #| include: false

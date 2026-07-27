@@ -1,0 +1,285 @@
+---
+title: "Data manipulation and tables"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+::: {.callout-tip title="Exam pattern"}
+Applied exams repeatedly ask for descriptive tables overall and by group, counts and proportions, missing-data summaries, and combined results across outcomes or studies. The verbs below cover the common preparation steps.
+:::
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(tidyr)
+```
+
+## 1. Example data
+
+The examples use built-in data so this page remains runnable. One row represents one participant.
+
+```{r}
+exam_dat <- mtcars |>
+  tibble::rownames_to_column("car") |>
+  as_tibble() |>
+  transmute(
+    id = row_number(),
+    car,
+    treatment = factor(am, labels = c("Control", "Intervention")),
+    site = factor(cyl),
+    mpg,
+    weight = wt,
+    biomarker = if_else(id %% 7 == 0, NA_real_, qsec),
+    event = factor(if_else(vs == 1, "Yes", "No"), levels = c("No", "Yes"))
+  )
+
+# glimpse() checks names, types, and representative values.
+glimpse(exam_dat)
+```
+
+## 2. Select, filter, arrange, and de-duplicate
+
+```{r}
+analysis_dat <- exam_dat |>
+  # select() keeps variables; rename() changes names without changing values.
+  select(id, treatment, site, outcome = mpg, weight, biomarker, event) |>
+  # relocate() changes display order only.
+  relocate(event, .after = treatment) |>
+  # filter() keeps rows satisfying the stated condition.
+  filter(weight < 5) |>
+  # arrange() sorts rows; desc() requests decreasing order.
+  arrange(treatment, desc(outcome))
+
+analysis_dat |>
+  # distinct() keeps one row per key; use .keep_all = TRUE to retain other columns.
+  distinct(id, .keep_all = TRUE) |>
+  slice_head(n = 6)
+```
+
+Useful row filters:
+
+```{r}
+exam_dat |> filter(is.na(biomarker))                    # missing biomarker
+exam_dat |> filter(!is.na(biomarker), event == "Yes")  # complete and event-positive
+
+exam_dat |>
+  # if_any() is TRUE when at least one selected variable is missing.
+  filter(if_any(c(mpg, weight, biomarker), is.na))
+
+exam_dat |>
+  # if_all() is TRUE only when every selected variable satisfies the condition.
+  filter(if_all(c(mpg, weight, biomarker), ~ !is.na(.x)))
+```
+
+## 3. Create and recode variables
+
+```{r}
+exam_dat <- exam_dat |>
+  mutate(
+    # case_when() is readable for mutually exclusive categories.
+    weight_group = case_when(
+      weight < 2.5 ~ "Low",
+      weight < 3.5 ~ "Middle",
+      TRUE ~ "High"
+    ),
+    weight_group = factor(weight_group, levels = c("Low", "Middle", "High")),
+    # if_else() is type-safe for a two-way definition.
+    complete_biomarker = if_else(is.na(biomarker), "Missing", "Observed"),
+    # across() applies the same transformation to several variables.
+    across(c(mpg, weight), ~ as.numeric(scale(.x)), .names = "z_{.col}")
+  )
+
+exam_dat |> select(id, weight_group, complete_biomarker, starts_with("z_")) |> slice_head(n = 6)
+```
+
+For model reference levels, use `relevel(factor(x), ref = "Control")`. Use `lag()` or `lead()` only after sorting within subject:
+
+```{r}
+orth_lag <- nlme::Orthodont |>
+  as_tibble() |>
+  group_by(Subject) |>
+  arrange(age, .by_group = TRUE) |>
+  mutate(previous_distance = lag(distance)) |>
+  ungroup()
+```
+
+## 4. Grouped summaries
+
+### Continuous variables
+
+```{r}
+continuous_summary <- exam_dat |>
+  group_by(treatment) |>
+  summarize(
+    n = n(),
+    mean_mpg = mean(mpg, na.rm = TRUE),
+    sd_mpg = sd(mpg, na.rm = TRUE),
+    median_biomarker = median(biomarker, na.rm = TRUE),
+    q1_biomarker = quantile(biomarker, 0.25, na.rm = TRUE),
+    q3_biomarker = quantile(biomarker, 0.75, na.rm = TRUE),
+    missing_biomarker = sum(is.na(biomarker)),
+    .groups = "drop"  # return an ungrouped result
+  )
+continuous_summary
+```
+
+Use `across()` when the same statistics are needed for several variables:
+
+```{r}
+exam_dat |>
+  group_by(treatment) |>
+  summarize(
+    across(
+      c(mpg, weight, biomarker),
+      list(mean = ~ mean(.x, na.rm = TRUE), sd = ~ sd(.x, na.rm = TRUE)),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  )
+```
+
+### Counts and proportions
+
+```{r}
+proportion_table <- exam_dat |>
+  # count() is shorthand for group_by(...) |> summarize(n = n()).
+  count(treatment, event, name = "n") |>
+  group_by(treatment) |>
+  mutate(proportion = n / sum(n)) |>
+  ungroup()
+proportion_table
+```
+
+For denominators based on distinct participants, use `n_distinct(id)` rather than `n()`.
+
+### Missingness
+
+```{r}
+missing_summary <- exam_dat |>
+  summarize(
+    across(
+      everything(),
+      list(n_missing = ~ sum(is.na(.x)), pct_missing = ~ mean(is.na(.x))),
+      .names = "{.col}_{.fn}"
+    )
+  ) |>
+  pivot_longer(
+    everything(),
+    names_to = c("variable", ".value"),
+    names_pattern = "(.*)_(n_missing|pct_missing)"
+  )
+missing_summary
+```
+
+## 5. Reshape with `tidyr`
+
+Long format is usually best for models and `ggplot2`; wide format is useful for paired variables, covariance matrices, and some multivariate procedures.
+
+```{r}
+orth_long <- nlme::Orthodont |>
+  as_tibble() |>
+  mutate(Subject = factor(Subject), age = as.integer(age))
+
+orth_wide <- orth_long |>
+  # pivot_wider() creates one response column per age.
+  pivot_wider(
+    id_cols = c(Subject, Sex),
+    names_from = age,
+    values_from = distance,
+    names_prefix = "age_"
+  )
+
+orth_long_again <- orth_wide |>
+  # pivot_longer() gathers the age columns into key-value pairs.
+  pivot_longer(
+    starts_with("age_"),
+    names_to = "age",
+    names_prefix = "age_",
+    values_to = "distance",
+    values_drop_na = TRUE
+  ) |>
+  mutate(age = as.integer(age))
+```
+
+Expose absent subject-visit rows before diagnosing missingness:
+
+```{r}
+orth_balanced <- orth_long |>
+  slice(-c(2, 8)) |>
+  group_by(Subject) |>
+  # complete() adds absent scheduled ages as explicit rows.
+  complete(age = sort(unique(orth_long$age))) |>
+  # fill() restores the subject-level variable on newly created rows.
+  fill(Sex, .direction = "downup") |>
+  ungroup()
+```
+
+`drop_na()` performs complete-case filtering. Use it only when that analysis is justified; do not silently replace a missing outcome with zero.
+
+## 6. Join and stack data
+
+```{r}
+site_key <- tibble(
+  site = factor(c(4, 6, 8)),
+  site_label = c("Clinic A", "Clinic B", "Clinic C")
+)
+
+exam_labeled <- exam_dat |>
+  # left_join() keeps every analysis row and appends matching lookup fields.
+  left_join(site_key, by = "site")
+
+trial_1 <- exam_dat |> mutate(trial = "Trial 1")
+trial_2 <- exam_dat |> mutate(trial = "Trial 2", id = id + max(exam_dat$id))
+
+# bind_rows() stacks datasets with compatible columns.
+combined_trials <- bind_rows(trial_1, trial_2)
+```
+
+After any join, compare row counts and check key uniqueness. An accidental many-to-many join can duplicate participants.
+
+## 7. Basic `knitr::kable()` output
+
+```{r}
+continuous_summary |>
+  mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+  knitr::kable(
+    caption = "Descriptive statistics by treatment group",
+    col.names = c(
+      "Treatment", "N", "Mean MPG", "SD MPG", "Median biomarker",
+      "Q1 biomarker", "Q3 biomarker", "Missing biomarker"
+    ),
+    align = c("l", rep("r", 7))
+  )
+```
+
+For percentages, create a display column before printing:
+
+```{r}
+proportion_table |>
+  mutate(percent = sprintf("%.1f%%", 100 * proportion)) |>
+  select(Treatment = treatment, Event = event, N = n, Percent = percent) |>
+  knitr::kable(caption = "Event frequency by treatment", align = c("l", "l", "r", "r"))
+```
+
+`kable()` formats an already prepared table; do calculations and rounding upstream. A concise exam table should have an informative caption, readable labels, units where relevant, and the denominator behind every percentage.
+
+## 8. High-yield function map
+
+| Task | Functions |
+|---|---|
+| Inspect | `glimpse()`, `names()`, `dim()`, `slice_head()` |
+| Keep or order | `select()`, `filter()`, `arrange()`, `distinct()` |
+| Create or recode | `mutate()`, `if_else()`, `case_when()`, `across()` |
+| Summarize | `group_by()`, `summarize()`, `count()`, `n()`, `n_distinct()` |
+| Reshape | `pivot_longer()`, `pivot_wider()`, `complete()`, `fill()` |
+| Combine | `left_join()`, `inner_join()`, `bind_rows()` |
+| Print | `knitr::kable()` |
+
+## 9. Exam references
+
+- 2019 Applied Doctoral Exam, pp. 5 and 8--9: preliminary summaries, response-by-subtype proportions, and combined displays.
+- 2020 Applied Doctoral Exam, pp. 4--7: descriptive tables, sample sizes, response rates, confidence intervals, and multi-study summaries.
+- 2021 Applied Doctoral Exam, pp. 2, 4, and 9--10: overall and group-specific descriptive tables.
+- 2023--2025 Applied Doctoral Exams: descriptive tables by group, missingness summaries, predictor summaries, and publication-ready model tables recur throughout.

@@ -1,0 +1,276 @@
+---
+title: "Common ggplot2 visualizations"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+::: {.callout-tip title="Exam pattern"}
+Applied exams commonly request clear EDA, outcome prevalence by group, longitudinal trajectories, model-based comparisons, and graphical diagnostics. Start with one question per figure and label the estimand and units.
+:::
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+## 1. Example data and grammar
+
+```{r}
+exam_dat <- mtcars |>
+  tibble::rownames_to_column("car") |>
+  as_tibble() |>
+  transmute(
+    id = row_number(),
+    treatment = factor(am, labels = c("Control", "Intervention")),
+    site = factor(cyl),
+    mpg,
+    weight = wt,
+    event = factor(if_else(vs == 1, "Yes", "No"), levels = c("No", "Yes"))
+  )
+```
+
+Every plot has the same structure:
+
+```r
+ggplot(data, aes(x = x_variable, y = y_variable)) +
+  geom_*() +
+  labs(x = "Readable x label", y = "Readable y label")
+```
+
+Put variables inside `aes()` and fixed choices outside it: `aes(color = treatment)` maps a variable, while `color = "navy"` sets one color.
+
+## 2. One-variable distributions
+
+### Continuous outcome
+
+```{r}
+# binwidth controls resolution; choose it from the outcome scale.
+ggplot(exam_dat, aes(x = mpg)) +
+  geom_histogram(binwidth = 3, boundary = 0, color = "white", fill = "steelblue") +
+  labs(x = "Fuel efficiency (miles per gallon)", y = "Number of participants")
+```
+
+```{r}
+# A boxplot summarizes center/spread; jitter shows the actual observations.
+ggplot(exam_dat, aes(x = treatment, y = mpg, fill = treatment)) +
+  geom_boxplot(width = 0.55, outlier.shape = NA, alpha = 0.6) +
+  geom_jitter(width = 0.08, height = 0, alpha = 0.7) +
+  guides(fill = "none") +
+  labs(x = NULL, y = "Fuel efficiency (miles per gallon)")
+```
+
+### Categorical outcome
+
+```{r}
+# geom_bar() computes counts from raw rows.
+ggplot(exam_dat, aes(x = event)) +
+  geom_bar(fill = "steelblue") +
+  labs(x = "Event", y = "Number of participants")
+```
+
+## 3. Counts and proportions by group
+
+```{r}
+# position = "fill" converts each treatment bar to within-group proportions.
+ggplot(exam_dat, aes(x = treatment, fill = event)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(x = NULL, y = "Participants", fill = "Event")
+```
+
+Use precomputed values with `geom_col()`:
+
+```{r}
+event_summary <- exam_dat |>
+  count(treatment, event, name = "n") |>
+  group_by(treatment) |>
+  mutate(proportion = n / sum(n)) |>
+  ungroup()
+
+# geom_col() uses the supplied y values; dodge places groups side by side.
+ggplot(event_summary, aes(treatment, proportion, fill = event)) +
+  geom_col(position = "dodge", width = 0.7) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(x = NULL, y = "Event prevalence", fill = "Event")
+```
+
+Always state whether percentages are within treatment, site, visit, or the full sample.
+
+## 4. Association between continuous variables
+
+```{r}
+# geom_smooth(method = "lm") overlays group-specific linear fits and confidence bands.
+ggplot(exam_dat, aes(weight, mpg, color = treatment)) +
+  geom_point(size = 2, alpha = 0.8) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(x = "Weight (1,000 lb)", y = "Fuel efficiency (miles per gallon)", color = "Treatment")
+```
+
+Use a log scale for a positive, strongly right-skewed variable when scientifically meaningful:
+
+```r
+plot_object + scale_x_log10()
+```
+
+## 5. Longitudinal profiles
+
+```{r}
+orth <- nlme::Orthodont |>
+  as_tibble() |>
+  mutate(Subject = factor(Subject))
+
+# group identifies trajectories; facet_wrap() creates comparable panels.
+ggplot(orth, aes(age, distance, group = Subject, color = Sex)) +
+  geom_line(alpha = 0.4, linewidth = 0.5) +
+  geom_point(alpha = 0.6, size = 1) +
+  facet_wrap(~ Sex) +
+  guides(color = "none") +
+  labs(x = "Age (years)", y = "Orthodontic distance")
+```
+
+Summarize the trajectories when individual lines are too dense:
+
+```{r}
+mean_profile <- orth |>
+  group_by(Sex, age) |>
+  summarize(
+    n = sum(!is.na(distance)),
+    mean = mean(distance, na.rm = TRUE),
+    se = sd(distance, na.rm = TRUE) / sqrt(n),
+    .groups = "drop"
+  )
+
+# Error bars are pointwise mean +/- SE, not confidence intervals unless multiplied by a critical value.
+ggplot(mean_profile, aes(age, mean, color = Sex, group = Sex)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  labs(x = "Age (years)", y = "Mean distance (mean +/- SE)", color = "Sex")
+```
+
+## 6. Estimates and confidence intervals
+
+```{r}
+effect_table <- tibble(
+  predictor = factor(c("Treatment", "Female", "Site B", "Site C")),
+  estimate = c(0.78, 1.24, 0.92, 1.41),
+  conf_low = c(0.61, 0.95, 0.70, 1.03),
+  conf_high = c(0.99, 1.62, 1.21, 1.93)
+)
+
+# coord_flip() gives long predictor labels more room.
+ggplot(effect_table, aes(predictor, estimate)) +
+  geom_hline(yintercept = 1, linetype = 2, color = "grey45") +
+  geom_pointrange(aes(ymin = conf_low, ymax = conf_high)) +
+  coord_flip() +
+  labs(x = NULL, y = "Odds ratio (95% CI)")
+```
+
+For differences, the null line is 0; for odds, risk, and rate ratios, it is 1.
+
+## 7. Model-based predictions
+
+```{r}
+fit <- lm(mpg ~ weight * treatment, data = exam_dat)
+
+weight_support <- exam_dat |>
+  group_by(treatment) |>
+  summarize(min_weight = min(weight), max_weight = max(weight), .groups = "drop")
+common_weight_range <- c(max(weight_support$min_weight), min(weight_support$max_weight))
+
+prediction_grid <- expand_grid(
+  # Restrict comparisons to the weight range observed in both groups.
+  weight = seq(common_weight_range[1], common_weight_range[2], length.out = 60),
+  treatment = levels(exam_dat$treatment)
+)
+
+prediction_grid <- bind_cols(
+  prediction_grid,
+  as_tibble(predict(fit, newdata = prediction_grid, interval = "confidence"))
+)
+
+# The ribbon shows uncertainty in the fitted mean, not prediction intervals for individuals.
+ggplot(prediction_grid, aes(weight, fit, color = treatment, fill = treatment)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.18, color = NA) +
+  geom_line(linewidth = 0.9) +
+  labs(
+    x = "Weight (1,000 lb)", y = "Predicted mean fuel efficiency",
+    color = "Treatment", fill = "Treatment"
+  )
+```
+
+Plot adjusted predictions from the fitted model when the question asks about an adjusted effect; raw group means answer a different question.
+
+## 8. Diagnostics
+
+```{r}
+diagnostic_dat <- tibble(
+  fitted = fitted(fit),
+  residual = residuals(fit)
+)
+
+# A random cloud around zero supports the mean/variance specification.
+ggplot(diagnostic_dat, aes(fitted, residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_smooth(se = FALSE, color = "steelblue") +
+  labs(x = "Fitted value", y = "Residual")
+
+# Departures from the line flag non-normal residual tails or outliers.
+ggplot(diagnostic_dat, aes(sample = residual)) +
+  stat_qq() +
+  stat_qq_line() +
+  labs(x = "Theoretical quantile", y = "Sample residual quantile")
+```
+
+Diagnostics assess assumptions; they do not prove that a model is correct.
+
+## 9. Labels, facets, and export
+
+```{r}
+publication_plot <- ggplot(exam_dat, aes(site, mpg, fill = treatment)) +
+  geom_boxplot(position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Outcome distribution by site and treatment",
+    x = "Study site",
+    y = "Fuel efficiency (miles per gallon)",
+    fill = "Treatment"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(legend.position = "bottom")
+publication_plot
+```
+
+```{r}
+#| eval: false
+# Save the plot object explicitly so the exported figure matches the displayed figure.
+ggsave("outcome-by-site.png", publication_plot, width = 7, height = 4.5, dpi = 300)
+```
+
+Use `facet_wrap(~ variable)` for comparable panels. Keep common axis scales unless different scales are essential and clearly labeled.
+
+## 10. High-yield geometry map
+
+| Question | Geometry |
+|---|---|
+| Continuous distribution | `geom_histogram()`, `geom_density()` |
+| Continuous outcome by group | `geom_boxplot()` with `geom_jitter()` |
+| Category count/proportion | `geom_bar()` |
+| Precomputed estimate/proportion | `geom_col()` |
+| Two continuous variables | `geom_point()` with `geom_smooth()` |
+| Repeated trajectory | `geom_line()` with `group = ID` |
+| Estimate and interval | `geom_errorbar()`, `geom_pointrange()` |
+| Model prediction and band | `geom_line()` with `geom_ribbon()` |
+| Multipanel comparison | `facet_wrap()` |
+| Residual or Q--Q diagnostic | `geom_point()`, `stat_qq()` |
+
+## 11. Exam references
+
+- 2019 Applied Doctoral Exam, pp. 6 and 8--9: relevant graphical summaries, response proportions, and subtype-overlap panels.
+- 2020 Applied Doctoral Exam, pp. 5 and 7: visual evidence and longitudinal descriptive displays.
+- 2021 Applied Doctoral Exam, pp. 2 and 9--10: plots supporting assumptions and concise figures for clinical reporting.
+- 2023--2025 Applied Doctoral Exams: graphical EDA, predicted trajectories, outcome prevalence by predictor level, and graphical effect evaluation recur throughout.

@@ -20,6 +20,8 @@ website:
         href: index.qmd
       - section: "Analysis in R"
         contents:
+          - analysis-in-r/00-data-manipulation-tables.qmd
+          - analysis-in-r/00-visualization.qmd
           - analysis-in-r/01-eda-descriptive.qmd
           - analysis-in-r/02-rm-anova-manova.qmd
           - analysis-in-r/03-linear-mixed-models.qmd

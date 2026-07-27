@@ -8,6 +8,18 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 
 ## Analysis in R
 
+### [00-data-manipulation-tables.qmd](analysis-in-r/00-data-manipulation-tables.qmd)
+
+- High-frequency `dplyr` verbs for selecting, filtering, recoding, grouping, and summarizing exam datasets.
+- Counts, proportions, missingness summaries, long/wide reshaping, joins, and row binding.
+- Basic publication-ready table output with `knitr::kable()`.
+
+### [00-visualization.qmd](analysis-in-r/00-visualization.qmd)
+
+- Common `ggplot2` displays for distributions, grouped proportions, associations, and longitudinal profiles.
+- Estimate/interval plots, adjusted prediction curves, faceting, and model diagnostics.
+- Concise labeling, denominator, null-line, and export guidance for exam figures.
+
 ### [01-eda-descriptive.qmd](analysis-in-r/01-eda-descriptive.qmd)
 
 - Individual spaghetti plots for heterogeneity, outliers, nonlinear trajectories, and irregular observation times.
