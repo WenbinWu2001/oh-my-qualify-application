@@ -12,6 +12,10 @@ execute: {echo: true, warning: false, message: false}
 #| label: setup
 #| include: false
 source("_common.R")
+library(mice)
+library(norm)
+library(geepack)
+library(nlme)
 library(dplyr)
 library(tidyr)
 library(lme4)
@@ -48,20 +52,25 @@ An incomplete version of `nlme::Orthodont` is generated reproducibly with monoto
 ```{r}
 data("Orthodont", package = "nlme")
 orth <- as.data.frame(Orthodont) |>
+  # Sort by subject/time before dropout operations; male is binary and age_c sets age 8 to zero.
   arrange(Subject, age) |>
   mutate(Subject = factor(Subject), male = as.integer(Sex == "Male"), age_c = age - 8)
 
 set.seed(767)
 drop_info <- orth |>
   filter(age == 10) |>
+  # transmute() keeps only new/output columns; plogis() converts a linear predictor to probability.
   transmute(
     Subject,
     p_drop = plogis(-0.8 + 0.35 * (distance - mean(distance)) + 0.35 * male),
+    # rbinom(n, size, prob) draws one Bernoulli dropout indicator per subject.
     dropout = rbinom(n(), 1, p_drop)
   )
 
 orth_miss <- orth |>
+  # left_join(..., by = "Subject") copies subject-level dropout information to every visit.
   left_join(drop_info, by = "Subject") |>
+  # ifelse(condition, NA, value) removes post-dropout responses while preserving other rows.
   mutate(distance_obs = ifelse(dropout == 1 & age >= 12, NA_real_, distance))
 with(orth_miss, table(age, is.na(distance_obs)))
 ```
@@ -74,6 +83,7 @@ with(orth_miss, table(age, is.na(distance_obs)))
 locf_data <- orth_miss |>
   group_by(Subject) |>
   mutate(distance_locf = distance_obs) |>
+  # fill(column, "down") carries the last observed value forward within each Subject.
   fill(distance_locf, .direction = "down") |>
   ungroup()
 head(locf_data[is.na(locf_data$distance_obs), c("Subject", "age", "distance_obs", "distance_locf")])
@@ -84,54 +94,65 @@ head(locf_data[is.na(locf_data$distance_obs), c("Subject", "age", "distance_obs"
 ```{r}
 wide_miss <- orth_miss |>
   select(Subject, male, age, distance_obs) |>
+  # pivot_wider(): age values name d8, d10, ... columns; distance_obs supplies their values.
   pivot_wider(names_from = age, values_from = distance_obs, names_prefix = "d") |>
   mutate(Subject = as.integer(Subject))
 
-if (requireNamespace("mice", quietly = TRUE)) {
-  ini <- mice::mice(wide_miss, maxit = 0, printFlag = FALSE)
-  meth <- ini$method
-  pred <- ini$predictorMatrix
-  meth[c("Subject", "male")] <- ""
-  pred[, "Subject"] <- 0
-  pred["male", ] <- 0
+# mice(data, maxit = 0) initializes default methods/predictors without performing imputation.
+ini <- mice::mice(wide_miss, maxit = 0, printFlag = FALSE)
+meth <- ini$method
+pred <- ini$predictorMatrix
+# method = "" means do not impute these complete identifiers/covariates.
+meth[c("Subject", "male")] <- ""
+# predictorMatrix[target, predictor]: 0 excludes a predictor; never use Subject as a numeric predictor.
+pred[, "Subject"] <- 0
+pred["male", ] <- 0
 
-  imp <- mice::mice(
-    wide_miss, m = 10, maxit = 10,
-    method = meth, predictorMatrix = pred,
-    seed = 767, printFlag = FALSE
-  )
+# mice(data, m, maxit, method, predictorMatrix): create m datasets using maxit chained-equation cycles.
+imp <- mice::mice(
+  wide_miss, m = 10, maxit = 10,
+  method = meth, predictorMatrix = pred,
+  seed = 767, printFlag = FALSE
+)
 
-  fits <- lapply(seq_len(imp$m), function(k) {
-    mice::complete(imp, k) |>
-      pivot_longer(starts_with("d"), names_to = "age", values_to = "distance") |>
-      mutate(age = as.numeric(sub("d", "", age)), age_c = age - 8, Subject = factor(Subject)) |>
-      lmer(distance ~ male * age_c + (1 | Subject), data = _, REML = FALSE)
-  })
-  mi_pool <- mice::pool(mice::as.mira(fits))
-  summary(mi_pool, conf.int = TRUE)
-}
+# complete(imp, k) extracts imputation k; lapply() fits the same analysis model to every dataset.
+fits <- lapply(seq_len(imp$m), function(k) {
+  mice::complete(imp, k) |>
+    # pivot_longer() gathers d8...d14 into age and imputed distance columns.
+    pivot_longer(starts_with("d"), names_to = "age", values_to = "distance") |>
+    mutate(age = as.numeric(sub("d", "", age)), age_c = age - 8, Subject = factor(Subject)) |>
+    # lmer(): distance is response; male*age_c is the fixed mean; Subject gets a random intercept.
+    lmer(distance ~ male * age_c + (1 | Subject), data = _, REML = FALSE)
+})
+# as.mira() registers the fit list; pool() combines estimates/SEs using Rubin's rules.
+mi_pool <- mice::pool(mice::as.mira(fits))
+# summary(pool, conf.int = TRUE) reports pooled estimates, Rubin SEs/df, and confidence intervals.
+summary(mi_pool, conf.int = TRUE)
 ```
 
 ### Observed-data EM estimate under multivariate normality
 
 ```{r}
-if (requireNamespace("norm", quietly = TRUE)) {
-  y_wide <- as.matrix(wide_miss[c("d8", "d10", "d12", "d14")])
-  prelim <- norm::prelim.norm(y_wide)
-  theta_em <- norm::em.norm(prelim, showits = FALSE)
-  em_parameters <- norm::getparam.norm(prelim, theta_em)
-  em_parameters$mu
-  em_parameters$sigma
-}
+# Build subjects-by-occasion matrix for a joint multivariate-normal response model.
+y_wide <- as.matrix(wide_miss[c("d8", "d10", "d12", "d14")])
+# prelim.norm(data) encodes missingness; em.norm() estimates MVN parameters by EM.
+prelim <- norm::prelim.norm(y_wide)
+theta_em <- norm::em.norm(prelim, showits = FALSE)
+# getparam.norm() converts the packed EM estimate to mean vector mu and covariance sigma.
+em_parameters <- norm::getparam.norm(prelim, theta_em)
+em_parameters$mu
+em_parameters$sigma
 ```
 
 ### Pattern-mixture sensitivity parameterization
 
 ```{r}
+# Pattern-mixture sensitivity model: factor(dropout) allows trajectories to differ by dropout group.
 pattern_fit <- lmer(
   distance_obs ~ male + age_c * factor(dropout) + (1 | Subject),
   data = orth_miss, REML = FALSE
 )
+# summary() reports trajectory differences between dropout-pattern groups.
 summary(pattern_fit)
 ```
 
@@ -139,6 +160,7 @@ summary(pattern_fit)
 
 ```{r}
 ipw_dat <- orth_miss |>
+  # Within each Subject, create visit/order, observation indicator R, prior outcome, and risk status.
   group_by(Subject) |>
   mutate(
     visit = row_number(),
@@ -149,11 +171,13 @@ ipw_dat <- orth_miss |>
   ungroup()
 
 den_fit <- glm(
+  # Denominator: probability response remains observed given baseline, time, and observed history.
   R ~ male + age_c + lag_y,
   family = binomial,
   data = filter(ipw_dat, visit > 1, at_risk)
 )
 num_fit <- glm(
+  # Numerator omits outcome history to stabilize the inverse-probability weights.
   R ~ male + age_c,
   family = binomial,
   data = filter(ipw_dat, visit > 1, at_risk)
@@ -162,22 +186,24 @@ num_fit <- glm(
 risk_rows <- which(ipw_dat$visit > 1 & ipw_dat$at_risk)
 ipw_dat$p_den <- 1
 ipw_dat$p_num <- 1
+# predict(type = "response") returns fitted observation probabilities; pmax truncates below at 0.02.
 ipw_dat$p_den[risk_rows] <- pmax(predict(den_fit, type = "response"), 0.02)
 ipw_dat$p_num[risk_rows] <- pmax(predict(num_fit, type = "response"), 0.02)
 ipw_dat <- ipw_dat |>
   group_by(Subject) |>
+  # cumprod() forms the stabilized probability ratio through each subject's visit history.
   mutate(sw = cumprod(ifelse(R == 1, p_num / p_den, 1))) |>
   ungroup()
 
-if (requireNamespace("geepack", quietly = TRUE)) {
-  wg <- geepack::geeglm(
-    distance_obs ~ male * age_c,
-    id = Subject, waves = visit, weights = sw,
-    data = filter(ipw_dat, R == 1),
-    family = gaussian, corstr = "independence"
-  )
-  summary(wg)
-}
+# geeglm(formula, id, waves, weights, data): fit observed outcomes with dropout weights.
+wg <- geepack::geeglm(
+  distance_obs ~ male * age_c,
+  id = Subject, waves = visit, weights = sw,
+  data = filter(ipw_dat, R == 1),
+  family = gaussian, corstr = "independence"
+)
+# summary() reports the weighted population-average coefficients and robust SEs.
+summary(wg)
 ```
 
 ## 6. Extract & interpret
@@ -187,11 +213,11 @@ MI estimates combine across completed datasets; `ubar`, `b`, and total variance 
 ## 7. Diagnostics
 
 ```{r}
-if (exists("imp")) {
-  plot(imp)                         # chain means/SDs by iteration
-  mice::densityplot(imp, ~d14)
-}
+# plot(mids) checks imputation-chain means/SDs; densityplot compares observed/imputed distributions.
+plot(imp)
+mice::densityplot(imp, ~d14)
 
+# Inspect weight center and tails; extreme weights can dominate the weighted analysis.
 summary(ipw_dat$sw[ipw_dat$R == 1])
 quantile(ipw_dat$sw[ipw_dat$R == 1], c(0, .01, .5, .99, 1))
 table(ipw_dat$R, ipw_dat$visit)

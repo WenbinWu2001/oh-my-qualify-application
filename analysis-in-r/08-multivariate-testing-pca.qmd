@@ -12,6 +12,7 @@ execute: {echo: true, warning: false, message: false}
 #| label: setup
 #| include: false
 source("_common.R")
+library(nlme)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -40,22 +41,28 @@ Base `manova()`/`summary.mlm()` compute multivariate tests; `stats::prcomp()` us
 ```{r}
 data("Orthodont", package = "nlme")
 orth_wide <- as.data.frame(Orthodont) |>
+  # Create valid age-specific column names, then reshape one row per Subject.
   mutate(age = paste0("age", age)) |>
   select(Subject, Sex, age, distance) |>
+  # pivot_wider(): age supplies column names; distance supplies response values.
   pivot_wider(names_from = age, values_from = distance) |>
   arrange(Subject)
+# Y is the subjects-by-outcomes matrix, explicitly ordered from age 8 through age 14.
 Y <- as.matrix(orth_wide[paste0("age", c(8, 10, 12, 14))])
 ```
 
 ## 5. Fit
 
 ```{r}
+# manova(matrix_response ~ groups, data): Y contains the four responses; Sex defines groups.
 mv_fit <- manova(Y ~ Sex, data = orth_wide)
+# test chooses the multivariate statistic; all summaries test the same group hypothesis.
 summary(mv_fit, test = "Pillai")
 summary(mv_fit, test = "Wilks")
 summary(mv_fit, test = "Hotelling-Lawley")
-summary.aov(mv_fit)                       # componentwise follow-up tests
+summary.aov(mv_fit)                       # separate Sex test for each response column
 
+# prcomp(data, center, scale.): center subtracts means; scale. divides by variable SDs.
 pca_cov <- prcomp(Y, center = TRUE, scale. = FALSE)
 pca_cor <- prcomp(Y, center = TRUE, scale. = TRUE)
 summary(pca_cov)
@@ -66,19 +73,24 @@ scree <- data.frame(
   variance = pca_cov$sdev^2,
   proportion = pca_cov$sdev^2 / sum(pca_cov$sdev^2)
 )
+# ggplot(data, aes(x, y)) maps component/proportion; geom_col() draws supplied y heights.
 ggplot(scree, aes(component, proportion)) + geom_col() +
   scale_x_continuous(breaks = scree$component)
 
 scores <- data.frame(pca_cov$x, Sex = orth_wide$Sex)
+# PC1/PC2 are subject scores; color = Sex compares group separation in score space.
 ggplot(scores, aes(PC1, PC2, color = Sex)) + geom_point(size = 2)
 ```
 
 ```{r}
 # Additional multivariate methods covered in STAT 571.
+# factanal(data, factors, rotation): fit one common factor and leave loadings unrotated.
 factor_fit <- factanal(Y, factors = 1, rotation = "none")
 factor_fit
 
+# dist(scale(Y)) computes Euclidean distances after standardizing response columns.
 pc_dist <- dist(scale(Y))
+# cmdscale(distance, k, eig): return a k-dimensional classical MDS representation and eigenvalues.
 mds <- cmdscale(pc_dist, k = 2, eig = TRUE)
 head(mds$points)
 ```
@@ -94,6 +106,7 @@ stopifnot(!anyNA(Y), nrow(Y) > ncol(Y))
 eigen(cov(Y), symmetric = TRUE)$values
 
 reconstruction_2pc <- sweep(
+  # scores %*% loadings reconstruct centered data from PCs 1-2; sweep() adds column means back.
   pca_cov$x[, 1:2, drop = FALSE] %*% t(pca_cov$rotation[, 1:2, drop = FALSE]),
   2, pca_cov$center, "+"
 )

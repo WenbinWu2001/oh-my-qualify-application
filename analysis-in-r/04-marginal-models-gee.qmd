@@ -14,6 +14,9 @@ execute: {echo: true, warning: false, message: false}
 source("_common.R")
 library(dplyr)
 library(ggplot2)
+library(geepack)
+library(broom)
+library(emmeans)
 ```
 
 ## 1. Aim
@@ -45,30 +48,39 @@ The model-based covariance is $B^{-1}$; the sandwich covariance is $B^{-1}MB^{-1
 ```{r}
 data("dietox", package = "geepack")
 dietox <- geepack::dietox |>
+  # Pig is the cluster ID; relevel() makes Cu000 the treatment reference category.
   mutate(Pig = factor(Pig), Cu = relevel(factor(Cu), ref = "Cu000")) |>
+  # geeglm() expects observations to be ordered by cluster and wave.
   arrange(Pig, Time)
+# glimpse(data) compactly checks column names, classes, and representative values.
 dplyr::glimpse(dietox)
 ```
 
 ## 5. Fit
 
 ```{r}
+# Formula convention: Weight is the response; * adds Time, Cu, and the Time-by-Cu interaction.
 gee_formula <- Weight ~ Time * Cu
 
+# geeglm(formula, id, waves, data, family, corstr): ID clusters rows; waves orders repeated visits.
 gee_ind <- geepack::geeglm(
   gee_formula, id = Pig, waves = Time, data = dietox,
+  # family gives response distribution/link; corstr gives the working within-Pig correlation.
   family = gaussian, corstr = "independence", std.err = "san.se"
 )
+# update() reuses every argument except the named working-correlation choice.
 gee_exch <- update(gee_ind, corstr = "exchangeable")
 gee_ar1 <- update(gee_ind, corstr = "ar1")
 gee_un <- update(gee_ind, corstr = "unstructured")
 
+# QIC(model) supplies GEE model-selection criteria; lapply() evaluates each fitted model.
 qic_table <- do.call(rbind, lapply(
   list(independence = gee_ind, exchangeable = gee_exch, AR1 = gee_ar1, unstructured = gee_un),
   function(z) geepack::QIC(z)
 ))
 qic_table
 
+# summary(geeglm_fit) reports coefficients with robust SEs and working-correlation estimates.
 summary(gee_ar1)
 ```
 
@@ -78,17 +90,21 @@ Separating a covariate into subject mean and within-subject deviation avoids con
 
 ```{r}
 dietox_tv <- dietox |>
+  # group_by(Pig) makes lag() and mean() operate separately within each subject.
   group_by(Pig) |>
+  # lag_weight is prior outcome; its Pig mean and deviation separate between/within-subject effects.
   mutate(lag_weight = lag(Weight), mean_lag_weight = mean(lag_weight, na.rm = TRUE),
          dev_lag_weight = lag_weight - mean_lag_weight) |>
   ungroup() |>
   filter(!is.na(lag_weight))
 
+# mean_lag_weight estimates between-Pig association; dev_lag_weight estimates within-Pig association.
 gee_within_between <- geepack::geeglm(
   Weight ~ Time + Cu + mean_lag_weight + dev_lag_weight,
   id = Pig, waves = Time, data = dietox_tv,
   family = gaussian, corstr = "exchangeable"
 )
+# Use summary() to inspect within- and between-subject coefficient estimates and robust SEs.
 summary(gee_within_between)
 ```
 
@@ -97,6 +113,7 @@ QIC may compare working correlations with a common mean model; compare mean mode
 ## 6. Extract & interpret
 
 ```{r}
+# This helper returns coefficient SEs from robust and model-based GEE covariance matrices.
 gee_covariance_table(gee_ar1)
 
 c(
@@ -104,15 +121,14 @@ c(
   scale_phi = unname(gee_ar1$geese$gamma)
 )
 
-if (requireNamespace("broom", quietly = TRUE)) {
-  broom::tidy(gee_ar1, conf.int = TRUE)
-}
+# tidy(model, conf.int = TRUE) returns one coefficient per row with confidence limits.
+broom::tidy(gee_ar1, conf.int = TRUE)
 
-if (requireNamespace("emmeans", quietly = TRUE)) {
-  emm_time <- emmeans::emtrends(gee_ar1, ~Cu, var = "Time", vcov. = gee_ar1$geese$vbeta)
-  emm_time
-  pairs(emm_time, adjust = "holm")
-}
+# emtrends(model, specs, var, vcov.): estimate the Time slope by Cu using robust covariance vbeta.
+emm_time <- emmeans::emtrends(gee_ar1, ~Cu, var = "Time", vcov. = gee_ar1$geese$vbeta)
+emm_time
+# pairs() compares Cu-specific slopes; adjust = "holm" controls multiplicity.
+pairs(emm_time, adjust = "holm")
 ```
 
 `Time` is the population-average weekly mean change in the reference feed group; `Time:Cu` terms are population-average differences in slopes. `alpha` parameterizes the chosen working correlation and is not ordinarily a scientific estimand in GEE1. For Gaussian data, $\phi$ estimates residual scale; for binomial/Poisson responses the canonical scale is often fixed at one, although software can estimate a scale depending on options. Robust SEs come from `vbeta`; model-based SEs from `vbeta.naiv` are valid only under the working covariance model.
@@ -127,18 +143,22 @@ so population-averaged log-odds effects are typically attenuated toward zero. Un
 ## 7. Diagnostics
 
 ```{r}
+# count(Pig) gives cluster sizes; summary() reports their distribution.
 cluster_size <- dietox |> count(Pig, name = "n_i")
 summary(cluster_size$n_i)
 
 gee_diag <- dietox |>
+  # Add fitted means and Pearson residuals to the original observation rows.
   mutate(
     fitted = fitted(gee_ar1),
     pearson = residuals(gee_ar1, type = "pearson")
   )
 
+# Plot residual versus fitted mean; alpha controls point transparency.
 ggplot(gee_diag, aes(fitted, pearson)) +
   geom_point(alpha = 0.5) + geom_hline(yintercept = 0, linetype = 2)
 
+# group = Pig connects each subject's residuals; group = 1 asks geom_smooth for one overall trend.
 ggplot(gee_diag, aes(Time, pearson, group = Pig)) +
   geom_line(alpha = 0.15) + geom_smooth(aes(group = 1), se = FALSE)
 

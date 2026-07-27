@@ -75,6 +75,7 @@ Use this structure unless the existing repository requires a compatible variatio
 │   ├── 02-<mathematical-topic>.qmd
 │   └── ...
 ├── references/
+│   ├── A0-setup-packages-data.qmd
 │   ├── A1-<reference-topic>.qmd
 │   ├── A2-<reference-topic>.qmd
 │   └── A3-packages.qmd
@@ -193,14 +194,13 @@ Create `_common.R` containing only genuinely shared behavior:
 
 - deterministic random seed;
 - display and contrast options;
-- required-package checks with actionable error messages;
 - shared plotting theme;
 - small, tested helper functions used by multiple chapters;
 - no private data loading;
 - no machine-specific paths;
 - no large model fits at source time.
 
-Prefer explicit namespace calls such as `package::function()` in reusable helpers. Load only the packages needed by each chapter. Optional packages must be guarded by `requireNamespace()` and the text must explain what is skipped when absent.
+Prefer explicit namespace calls such as `package::function()` in reusable helpers. Assume the relevant packages are already installed, and load only the packages needed by each chapter with direct `library(<PACKAGE>)` calls in its setup chunk. Do not add `requireNamespace()` or `exists()` guards, conditional package fallbacks, or `install.packages()` logic to analysis or topic-reference chapters; a missing required package should fail visibly. The sole exception is the dedicated setup page described below, whose installer must use `eval: false` so rendering never changes the R library.
 
 For an R manual, common helper functions may include:
 
@@ -214,7 +214,17 @@ For an R manual, common helper functions may include:
 
 Test every helper independently before using it across chapters.
 
-### 3.2 Package catalogue first
+### 3.2 Setup page and package catalogue first
+
+Create `references/A0-setup-packages-data.qmd` as the one-time clean-environment setup page. It must:
+
+- contain one non-rendered (`#| eval: false`) installer for the union of packages used by executable manual code, the package catalogue, and previous-exam solutions;
+- install only missing packages and verify the completed installation without attaching every package at once;
+- explain that ordinary chapters load only their own dependencies;
+- document repository-relative exam-data path construction;
+- show concise, argument-aware usage for every data-loading function actually used by the previous-exam solutions;
+- include a year-to-reader map and immediate post-import checks;
+- avoid executing installation or loading private exam data during site rendering.
 
 Draft `references/A3-packages.qmd` before the model chapters. Group packages by task:
 
@@ -321,6 +331,34 @@ Examples of differences that require explicit treatment include:
 - quadrature or pseudo-likelihood defaults;
 - covariance-structure parameterizations;
 - contrast coding.
+
+#### Code comments and package loading
+
+Write R code as an open-book analysis manual for a reader who knows basic R but may not know the packages. Add a concise usage comment immediately before a key call, or inline when that is cleaner. The comment must identify the purpose and the meaning of the arguments that a reader is likely to change, rather than merely restating the function name.
+
+Comment at least the following:
+
+- regression and repeated-measures functions: identify the response, predictors, data, family/link, cluster or subject ID, wave/time variable, random-effects syntax, covariance structure, weights, offset, estimation method, or numerical-integration option as applicable;
+- missing-data functions: identify the data being imputed, number of imputations, iteration count, method vector, predictor-matrix direction, completed-data extraction, model fitting across imputations, pooling, EM inputs, and weighting probabilities;
+- important dataframe transformations: explain grouping scope, join keys, lag/order requirements, and the roles of `names_from`, `values_from`, `names_to`, and `values_to`;
+- visualization functions: explain the data and principal `aes()` mappings, grouping, layers, intervals, or diagnostic reference lines;
+- summary, extraction, contrast, prediction, and diagnostic functions: state what quantity is returned, its scale or conditioning set, and any important inference or multiplicity option.
+
+For example:
+
+```r
+# geeglm(formula, id, waves, data, family, corstr): id clusters rows; waves orders visits.
+fit <- geepack::geeglm(
+  Y ~ treatment * time,
+  id = subject_id,
+  waves = visit,
+  data = analysis_data,
+  family = gaussian,
+  corstr = "exchangeable"
+)
+```
+
+Keep comments brief, specific, and close to the relevant call. Prefer a separate comment line when an inline comment would make the code difficult to scan. Do not narrate trivial assignments or comment every line.
 
 #### Data
 
@@ -845,11 +883,11 @@ Create `.github/workflows/publish.yml` that:
 Derive the CI package list from:
 
 - `_common.R`;
-- unguarded `library()` or `require()` calls;
-- unguarded `package::function()` usage;
+- every chapter-level `library()` call;
+- every `package::function()` usage;
 - document-rendering requirements.
 
-Optional guarded packages need not be installed unless their output is required for the published site. Prefer installing them when the corresponding examples are important to the finished book.
+Install every package referenced by executable manual code. The manual does not use package-existence guards or skip analysis branches when a dependency is absent.
 
 Set repository **Settings → Pages → Source** to **GitHub Actions**. The generated `_site` directory must remain ignored on the source branch; the workflow publishes it as an artifact.
 
@@ -892,7 +930,9 @@ Resolve contradictions explicitly. Never “average” two incompatible formulas
 - Render each exam solution with its actual same-year data.
 - Confirm factor levels, ordering, offsets, cluster IDs, time variables, and missing values.
 - Confirm model comparisons use compatible likelihoods and nestedness assumptions.
-- Confirm optional-package branches behave correctly.
+- Confirm each analysis/topic-reference chapter loads its required packages directly and contains no package-existence or installation fallback logic.
+- Confirm the dedicated setup page is the only file containing installation logic and that every installer chunk has `eval: false`.
+- Confirm every key model, imputation, transformation, visualization, summary, extraction, prediction, and diagnostic call has a concise, accurate usage comment.
 - Confirm stochastic results have fixed seeds.
 - Confirm diagnostics use the correct sampling unit.
 - Confirm reported interpretations agree with the fitted parameterization.

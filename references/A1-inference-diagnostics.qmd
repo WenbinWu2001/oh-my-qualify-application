@@ -12,6 +12,13 @@ execute: {echo: true, warning: false, message: false}
 #| label: setup
 #| include: false
 source("_common.R")
+library(lmerTest)
+library(pbkrtest)
+library(influence.ME)
+library(DHARMa)
+library(performance)
+library(see)
+library(MASS)
 library(dplyr)
 library(ggplot2)
 library(lme4)
@@ -37,23 +44,28 @@ For an LMM, marginal residuals are $r_i^{(m)}=Y_i-X_i\widehat\beta$ and conditio
 ```{r}
 data("Orthodont", package = "nlme")
 orth <- as.data.frame(Orthodont) |>
+  # Sort by subject/time; Subject is cluster ID, age_c is centered time, visit is within-ID order.
   arrange(Subject, age) |>
   mutate(Subject = factor(Subject), age_c = age - 8, visit = ave(age, Subject, FUN = seq_along))
 
 data("epil", package = "MASS")
 epil <- MASS::epil |>
+  # subject identifies repeated observations; period_c makes the first period time zero.
   mutate(subject = factor(subject), period_c = period - 1)
 ```
 
 ## 5. Fit
 
 ```{r}
-lmm <- lmer(distance ~ Sex * age_c + (age_c | Subject), orth, REML = TRUE)
+# lmer(): distance is response; Sex*age_c is fixed mean; (age_c | Subject) is random intercept/slope.
+lmm <- lme4::lmer(distance ~ Sex * age_c + (age_c | Subject), orth, REML = TRUE)
+# gls(): corAR1(~ visit | Subject) specifies AR(1) residual correlation within subject.
 gls_ar1 <- gls(
   distance ~ Sex * age_c, orth,
   correlation = corAR1(form = ~visit | Subject), method = "REML"
 )
-count_glmm <- glmer(
+# glmer(): y is count response; family chooses Poisson/log; (1 | subject) is random intercept.
+count_glmm <- lme4::glmer(
   y ~ trt * period_c + lbase + lage + (1 | subject),
   epil, family = poisson, nAGQ = 1
 )
@@ -62,17 +74,16 @@ count_glmm <- glmer(
 ## 6. Extract & interpret
 
 ```{r}
-if (requireNamespace("lmerTest", quietly = TRUE)) {
-  lmm_lt <- lmerTest::as_lmerModLmerTest(lmm)
-  anova(lmm_lt, ddf = "Satterthwaite")
-  anova(lmm_lt, ddf = "Kenward-Roger")
-}
+# Convert the lme4 fit so anova(ddf = ...) can choose Satterthwaite or Kenward-Roger df.
+lmm_lt <- lmerTest::as_lmerModLmerTest(lmm)
+anova(lmm_lt, ddf = "Satterthwaite")
+anova(lmm_lt, ddf = "Kenward-Roger")
 
-if (requireNamespace("pbkrtest", quietly = TRUE)) {
-  lmm_reduced <- lmer(distance ~ Sex + age_c + (age_c | Subject), orth, REML = TRUE)
-  pbkrtest::KRmodcomp(lmm, lmm_reduced)
-}
+lmm_reduced <- lme4::lmer(distance ~ Sex + age_c + (age_c | Subject), orth, REML = TRUE)
+# KRmodcomp(full, reduced) tests fixed terms present only in the full model.
+pbkrtest::KRmodcomp(lmm, lmm_reduced)
 
+# parm = "theta_" requests variance parameters; profile uses profile-likelihood intervals.
 confint(lmm, parm = "theta_", method = "profile")
 ```
 
@@ -83,6 +94,7 @@ Fixed-effect tests require the intended estimable function and denominator-df me
 ### Gaussian marginal and conditional residuals
 
 ```{r}
+# fitted/resid are conditional on BLUPs; predict(re.form = NA) sets random effects to zero.
 lmm_diag <- data.frame(
   fitted_conditional = fitted(lmm),
   residual_conditional = resid(lmm),
@@ -91,6 +103,7 @@ lmm_diag <- data.frame(
   residual_marginal = orth$distance - predict(lmm, re.form = NA)
 )
 
+# ggplot(data, aes(x, y)) maps fitted and Pearson residual columns to axes.
 ggplot(lmm_diag, aes(fitted_conditional, residual_pearson)) +
   geom_point() + geom_hline(yintercept = 0, linetype = 2)
 qqnorm(lmm_diag$residual_conditional); qqline(lmm_diag$residual_conditional)
@@ -103,20 +116,21 @@ qqnorm(re[["age_c"]]); qqline(re[["age_c"]])
 ### Serial dependence and influence
 
 ```{r}
+# Variogram(model, ~ time | ID) summarizes normalized residual dependence by lag.
 vg <- Variogram(gls_ar1, form = ~age | Subject, resType = "normalized")
 plot(vg, smooth = TRUE)
 
-if (requireNamespace("influence.ME", quietly = TRUE)) {
-  infl <- influence.ME::influence(lmm, group = "Subject")
-  cd <- cooks.distance(infl)
-  head(sort(cd, decreasing = TRUE))
-  dfbetas(infl)[1:5, , drop = FALSE]
-}
+# influence(model, group) deletes one independent Subject at a time.
+infl <- influence.ME::influence(lmm, group = "Subject")
+cd <- cooks.distance(infl)
+head(sort(cd, decreasing = TRUE))
+dfbetas(infl)[1:5, , drop = FALSE]
 ```
 
 ### GLMM residuals, dispersion, and convergence
 
 ```{r}
+# Collect fitted values plus Pearson/deviance residuals for observation-level checks.
 glmm_diag <- data.frame(
   fitted = fitted(count_glmm),
   pearson = residuals(count_glmm, type = "pearson"),
@@ -124,21 +138,19 @@ glmm_diag <- data.frame(
 )
 ggplot(glmm_diag, aes(fitted, pearson)) + geom_point() + geom_hline(yintercept = 0, lty = 2)
 
+# Pearson sum of squares divided by approximate residual df screens for overdispersion.
 sum(glmm_diag$pearson^2) / (nobs(count_glmm) - length(fixef(count_glmm)))
 isSingular(count_glmm)
 count_glmm@optinfo$conv$lme4$messages
 
-if (requireNamespace("DHARMa", quietly = TRUE)) {
-  dh <- DHARMa::simulateResiduals(count_glmm, n = 250, plot = FALSE)
-  plot(dh)
-  DHARMa::testDispersion(dh)
-  DHARMa::testZeroInflation(dh)
-}
+# simulateResiduals(model, n) generates simulation-based GLMM residuals; tests target dispersion/zeros.
+dh <- DHARMa::simulateResiduals(count_glmm, n = 250, plot = FALSE)
+plot(dh)
+DHARMa::testDispersion(dh)
+DHARMa::testZeroInflation(dh)
 
-if (requireNamespace("performance", quietly = TRUE) &&
-    requireNamespace("see", quietly = TRUE)) {
-  performance::check_model(count_glmm)
-}
+# check_model(model) assembles standardized diagnostic panels; see provides the plotting backend.
+performance::check_model(count_glmm)
 ```
 
 ## 8. Caveats

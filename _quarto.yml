@@ -46,6 +46,7 @@ website:
           - math-writeups/13-sample-size-power.qmd
       - section: "Reference"
         contents:
+          - references/A0-setup-packages-data.qmd
           - references/A1-inference-diagnostics.qmd
           - references/A2-interpretation-cheatsheet.qmd
           - references/A3-packages.qmd

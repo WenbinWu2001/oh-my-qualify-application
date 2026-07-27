@@ -15,6 +15,11 @@ source("_common.R")
 library(dplyr)
 library(ggplot2)
 library(nlme)
+library(glmmTMB)
+library(lmerTest)
+library(pbkrtest)
+library(broom.mixed)
+library(influence.ME)
 library(lme4)
 ```
 
@@ -51,8 +56,10 @@ $$
 ```{r}
 data("Orthodont", package = "nlme")
 orth <- as.data.frame(Orthodont) |>
+  # Always sort within ID before constructing visit order or lagged variables.
   arrange(Subject, age) |>
   group_by(Subject) |>
+  # mutate() creates visit order, centered continuous time, and categorical occasion.
   mutate(visit = row_number(), age_c = age - 8, age_f = factor(age)) |>
   ungroup() |>
   mutate(Subject = factor(Subject))
@@ -63,12 +70,16 @@ orth <- as.data.frame(Orthodont) |>
 ### Direct residual covariance models
 
 ```{r}
+# Formula convention: response is left of ~; * includes both main effects and their interaction.
 mean_formula <- distance ~ Sex * age_c
+# glsControl() changes numerical fitting only: use optim and allow up to 200 iterations.
 ctrl <- glsControl(opt = "optim", msMaxIter = 200)
 
+# gls(formula, data, correlation, weights, method): each list item changes only covariance structure.
 cov_models <- list(
   independence = gls(mean_formula, orth, method = "REML", control = ctrl),
   CS = gls(mean_formula, orth,
+           # form = ~ time | ID tells nlme the within-subject order and clustering.
            correlation = corCompSymm(form = ~visit | Subject),
            method = "REML", control = ctrl),
   AR1 = gls(mean_formula, orth,
@@ -82,10 +93,12 @@ cov_models <- list(
                             method = "REML", control = ctrl),
   unstructured = gls(mean_formula, orth,
                      correlation = corSymm(form = ~visit | Subject),
+                     # varIdent(~1 | age_f) estimates a separate residual variance ratio by age.
                      weights = varIdent(form = ~1 | age_f),
                      method = "REML", control = ctrl)
 )
 
+# lapply() extracts fit criteria from every model; do.call(rbind, ...) stacks them by row.
 cov_comparison <- do.call(
   rbind,
   lapply(names(cov_models), function(nm) {
@@ -103,32 +116,35 @@ anova(cov_models$independence, cov_models$CS)  # nested LRT; same fixed-effects 
 `nlme` has no dedicated freely estimated Toeplitz `corStruct`. The exact idiomatic implementation below uses `glmmTMB`; the `nlme::corARMA()` family is stationary but is not, in general, the same parameter space as an unrestricted Toeplitz matrix.
 
 ```{r}
-if (requireNamespace("glmmTMB", quietly = TRUE)) {
-  library(glmmTMB)
-  toeplitz_fit <- glmmTMB::glmmTMB(
-    distance ~ Sex * age_c + homtoep(0 + age_f | Subject),
-    dispformula = ~0,
-    data = orth,
-    REML = TRUE
-  )
-  summary(toeplitz_fit)
-}
+# glmmTMB(formula, data, REML): homtoep(0 + occasion | ID) specifies homogeneous Toeplitz covariance.
+toeplitz_fit <- glmmTMB::glmmTMB(
+  distance ~ Sex * age_c + homtoep(0 + age_f | Subject),
+  # dispformula = ~0 avoids adding a second independent residual component.
+  dispformula = ~0,
+  data = orth,
+  REML = TRUE
+)
+summary(toeplitz_fit)
 ```
 
 ### Fixed-effect and random-effect selection
 
 ```{r}
-m_mean_reduced_ml <- lmer(distance ~ Sex + age_c + (age_c | Subject),
-                          data = orth, REML = FALSE)
-m_mean_full_ml <- lmer(distance ~ Sex * age_c + (age_c | Subject),
-                       data = orth, REML = FALSE)
+# lmer(formula, data, REML): (age_c | Subject) gives each subject a random intercept and age slope.
+# Use REML = FALSE (ML) when comparing fixed-effect formulas.
+m_mean_reduced_ml <- lme4::lmer(distance ~ Sex + age_c + (age_c | Subject),
+                                data = orth, REML = FALSE)
+m_mean_full_ml <- lme4::lmer(distance ~ Sex * age_c + (age_c | Subject),
+                             data = orth, REML = FALSE)
 anova(m_mean_reduced_ml, m_mean_full_ml)       # fixed effects: ML
 
-m_ri_reml <- lmer(distance ~ Sex * age_c + (1 | Subject), data = orth, REML = TRUE)
-m_rs_reml <- lmer(distance ~ Sex * age_c + (age_c | Subject), data = orth, REML = TRUE)
+# (1 | Subject) is random intercept only; identical fixed effects permit a REML covariance comparison.
+m_ri_reml <- lme4::lmer(distance ~ Sex * age_c + (1 | Subject), data = orth, REML = TRUE)
+m_rs_reml <- lme4::lmer(distance ~ Sex * age_c + (age_c | Subject), data = orth, REML = TRUE)
 AIC(m_ri_reml, m_rs_reml)                      # same fixed effects: REML comparison
 
 final_lmm <- m_rs_reml
+# summary(model) reports fixed effects, random-effect covariance, residual SD, and fit diagnostics.
 summary(final_lmm)
 ```
 
@@ -137,15 +153,19 @@ summary(final_lmm)
 ```{r}
 # Crossed clustering example covered by the multilevel-model extension.
 data("Penicillin", package = "lme4")
-crossed_lmm <- lmer(diameter ~ 1 + (1 | plate) + (1 | sample), data = Penicillin)
+# Separate (1 | group) terms give crossed random intercepts for plate and sample.
+crossed_lmm <- lme4::lmer(diameter ~ 1 + (1 | plate) + (1 | sample), data = Penicillin)
 summary(crossed_lmm)
 
 # Nonlinear mixed growth curve: subject-specific asymptote.
 data("Loblolly", package = "datasets")
+# getInitial() obtains starting values for the named self-starting nonlinear curve.
 start_nls <- getInitial(height ~ SSasymp(age, Asym, R0, lrc), data = Loblolly)
+# nlme(model, data, fixed, random, start): specify population parameters and subject-varying parameters.
 nlmm_growth <- nlme(
   height ~ SSasymp(age, Asym, R0, lrc),
   data = Loblolly,
+  # All three curve parameters are fixed; Asym also gets a random intercept within Seed.
   fixed = Asym + R0 + lrc ~ 1,
   random = Asym ~ 1 | Seed,
   start = start_nls
@@ -156,25 +176,24 @@ summary(nlmm_growth)
 ### Satterthwaite and Kenward--Roger denominator df
 
 ```{r}
-if (requireNamespace("lmerTest", quietly = TRUE)) {
-  final_lt <- lmerTest::lmer(
-    distance ~ Sex * age_c + (age_c | Subject), data = orth, REML = TRUE
-  )
-  anova(final_lt, ddf = "Satterthwaite")
-  anova(final_lt, ddf = "Kenward-Roger")
-}
+# lmerTest::lmer() fits the LMM; anova(ddf = ...) chooses the denominator-df approximation.
+final_lt <- lmerTest::lmer(
+  distance ~ Sex * age_c + (age_c | Subject), data = orth, REML = TRUE
+)
+anova(final_lt, ddf = "Satterthwaite")
+anova(final_lt, ddf = "Kenward-Roger")
 
-if (requireNamespace("pbkrtest", quietly = TRUE)) {
-  kr_full <- lmer(distance ~ Sex * age_c + (age_c | Subject), orth, REML = TRUE)
-  kr_reduced <- lmer(distance ~ Sex + age_c + (age_c | Subject), orth, REML = TRUE)
-  pbkrtest::KRmodcomp(kr_full, kr_reduced)
-}
+kr_full <- lme4::lmer(distance ~ Sex * age_c + (age_c | Subject), orth, REML = TRUE)
+kr_reduced <- lme4::lmer(distance ~ Sex + age_c + (age_c | Subject), orth, REML = TRUE)
+# KRmodcomp(full, reduced) tests the fixed-effect terms omitted from the reduced model.
+pbkrtest::KRmodcomp(kr_full, kr_reduced)
 ```
 
 ### Boundary test for one variance component
 
 ```{r}
-ri_ml <- lmer(distance ~ Sex * age_c + (1 | Subject), orth, REML = FALSE)
+# The two ML fits differ by a subject random intercept; the null variance lies on the zero boundary.
+ri_ml <- lme4::lmer(distance ~ Sex * age_c + (1 | Subject), orth, REML = FALSE)
 ols_ml <- lm(distance ~ Sex * age_c, orth)
 lr_ri <- max(0, 2 * (as.numeric(logLik(ri_ml)) - as.numeric(logLik(ols_ml))))
 p_mixture <- 0.5 * stats::pchisq(lr_ri, df = 1, lower.tail = FALSE)
@@ -187,14 +206,14 @@ c(LR = lr_ri, p_50_50_mixture = p_mixture)
 fixef(final_lmm)
 as.data.frame(VarCorr(final_lmm))
 ranef(final_lmm)$Subject |> head()              # BLUPs/conditional modes
+# parm = "theta_" requests variance parameters; method = "profile" uses profile likelihood.
 confint(final_lmm, parm = "theta_", method = "profile")
 
 ri_only_icc <- icc_random_intercept(m_ri_reml)
 ri_only_icc
 
-if (requireNamespace("broom.mixed", quietly = TRUE)) {
-  broom.mixed::tidy(final_lmm, effects = c("fixed", "ran_pars"), conf.int = TRUE)
-}
+# tidy(model, effects, conf.int) returns fixed effects and random-effect SD/correlation in one table.
+broom.mixed::tidy(final_lmm, effects = c("fixed", "ran_pars"), conf.int = TRUE)
 ```
 
 Fixed effects describe the conditional mean at $b_i=0$, which equals the population mean under the identity link. Random-intercept and random-slope variances quantify unexplained between-subject heterogeneity; their correlation describes association between baseline level and change. BLUPs are shrunken subject predictions, not observed subject parameters. The random-intercept ICC is $\tau_0^2/(\tau_0^2+\sigma^2)$; with random slopes, correlation is time-dependent and a single ICC is inadequate. Satterthwaite/KR output reports approximate denominator df; base `lmer()` reports no p-values by design.
@@ -202,27 +221,30 @@ Fixed effects describe the conditional mean at $b_i=0$, which equals the populat
 ## 7. Diagnostics
 
 ```{r}
+# isSingular() flags an estimated random-effect covariance on/near its boundary.
 lme4::isSingular(final_lmm, tol = 1e-4)
 final_lmm@optinfo$conv$lme4$messages
 
+# fitted()/resid() create observation-level diagnostic columns from the fitted model.
 diag_df <- data.frame(
   fitted = fitted(final_lmm),
   conditional_resid = resid(final_lmm),
   pearson_resid = resid(final_lmm, type = "pearson")
 )
+# aes(x, y) selects plot axes; geom_hline(yintercept = 0) adds the zero-residual reference.
 ggplot(diag_df, aes(fitted, pearson_resid)) + geom_point() + geom_hline(yintercept = 0, lty = 2)
 
 qqnorm(diag_df$conditional_resid); qqline(diag_df$conditional_resid)
 re <- ranef(final_lmm)$Subject
 qqnorm(re[["(Intercept)"]]); qqline(re[["(Intercept)"]])
 
+# Variogram(model, ~ time | ID) summarizes normalized residual dependence by lag.
 vg <- Variogram(cov_models$AR1, form = ~age | Subject, resType = "normalized")
 plot(vg, smooth = TRUE)
 
-if (requireNamespace("influence.ME", quietly = TRUE)) {
-  infl <- influence.ME::influence(final_lmm, group = "Subject")
-  head(sort(cooks.distance(infl), decreasing = TRUE))
-}
+# influence(model, group) deletes one independent cluster at a time; group names the subject ID.
+infl <- influence.ME::influence(final_lmm, group = "Subject")
+head(sort(cooks.distance(infl), decreasing = TRUE))
 ```
 
 For singular or nonconvergent fits: rescale/center time, inspect observations per random coefficient, simplify random-effect correlations with `(1 + age_c || Subject)`, compare optimizers, and retain complexity only when scientifically and empirically supported.

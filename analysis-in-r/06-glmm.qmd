@@ -12,6 +12,9 @@ execute: {echo: true, warning: false, message: false}
 #| label: setup
 #| include: false
 source("_common.R")
+library(MASS)
+library(glmmTMB)
+library(DHARMa)
 library(dplyr)
 library(ggplot2)
 library(lme4)
@@ -43,61 +46,71 @@ $$
 ```{r}
 data("epil", package = "MASS")
 epil <- MASS::epil |>
+  # subject is the cluster ID; period_c centers time; exposure is the count denominator.
   mutate(subject = factor(subject), period_c = period - 1, exposure = 2)
 ```
 
 ## 5. Fit
 
 ```{r}
+# Model formula: y is response; offset fixes exposure; (1 | subject) adds a random intercept.
 form <- y ~ trt * period_c + lbase + lage + offset(log(exposure)) + (1 | subject)
 
+# glmer(formula, data, family, nAGQ): fit a GLMM; nAGQ = 1 selects the Laplace approximation.
 pois_laplace <- glmer(
   form, data = epil, family = poisson(link = "log"), nAGQ = 1,
+  # control changes optimizer and evaluation budget, not the statistical model.
   control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
 )
+# update() reuses the model and changes integration to seven adaptive quadrature points.
 pois_agq <- update(pois_laplace, nAGQ = 7)
 
+# summary(glmer_fit) reports conditional fixed effects, random-effect variance, and fit information.
 summary(pois_laplace)
 cbind(Laplace = fixef(pois_laplace), AGQ7 = fixef(pois_agq))
 AIC(pois_laplace, pois_agq)
 ```
 
 ```{r}
-if (requireNamespace("glmmTMB", quietly = TRUE)) {
-  nb_glmm <- glmmTMB::glmmTMB(
-    y ~ trt * period_c + lbase + lage + offset(log(exposure)) + (1 | subject),
-    data = epil,
-    family = glmmTMB::nbinom2(link = "log")
-  )
-  summary(nb_glmm)
-  AIC(pois_laplace, nb_glmm)
-}
+# glmmTMB(formula, data, family): same conditional mean, with nbinom2 variance mu + mu^2/dispersion.
+nb_glmm <- glmmTMB::glmmTMB(
+  y ~ trt * period_c + lbase + lage + offset(log(exposure)) + (1 | subject),
+  data = epil,
+  family = glmmTMB::nbinom2(link = "log")
+)
+summary(nb_glmm)
+AIC(pois_laplace, nb_glmm)
 ```
 
 ### Transition model
 
 ```{r}
 epil_transition <- epil |>
+  # Group and sort before lag(): lag_y must be the same subject's immediately previous outcome.
   group_by(subject) |>
   arrange(period, .by_group = TRUE) |>
   mutate(lag_y = lag(y)) |>
   ungroup() |>
   filter(!is.na(lag_y))
 
+# glm() fits a population transition mean conditional on the observed prior outcome.
 transition_fit <- glm(
   y ~ trt + period_c + log1p(lag_y) + lbase + lage,
   family = quasipoisson(link = "log"), data = epil_transition
 )
+# summary(glm_fit) reports conditional-on-lag coefficients and quasi-likelihood dispersion.
 summary(transition_fit)
 ```
 
 ## 6. Extract & interpret
 
 ```{r}
+# Exponentiating log-link fixed effects and Wald limits converts them to conditional rate ratios.
 exp(cbind(estimate = fixef(pois_agq), confint(pois_agq, parm = "beta_", method = "Wald")))
 as.data.frame(VarCorr(pois_agq))
 head(ranef(pois_agq)$subject)
 
+# predict(type = "response") returns rates: re.form = NULL uses BLUPs; NA sets random effects to zero.
 conditional_rate <- predict(pois_agq, type = "response", re.form = NULL)
 fixed_re_zero_rate <- predict(pois_agq, type = "response", re.form = NA)
 head(cbind(conditional_rate, fixed_re_zero_rate))
@@ -114,22 +127,24 @@ so the corresponding GEE coefficient is typically attenuated. Under a log link w
 ## 7. Diagnostics
 
 ```{r}
+# isSingular() checks boundary random effects; optinfo holds optimizer convergence messages.
 lme4::isSingular(pois_laplace)
 pois_laplace@optinfo$conv$lme4$messages
 
+# Pearson residual sum of squares divided by approximate residual df screens for overdispersion.
 pearson <- residuals(pois_laplace, type = "pearson")
 overdispersion <- sum(pearson^2) / (nobs(pois_laplace) - length(fixef(pois_laplace)))
 overdispersion
 
+# Plot Pearson residuals against conditional fitted means; y = 0 is the reference.
 ggplot(data.frame(fitted = fitted(pois_laplace), pearson), aes(fitted, pearson)) +
   geom_point() + geom_hline(yintercept = 0, linetype = 2)
 
-if (requireNamespace("DHARMa", quietly = TRUE)) {
-  sim_res <- DHARMa::simulateResiduals(pois_laplace, n = 250, plot = FALSE)
-  plot(sim_res)
-  DHARMa::testDispersion(sim_res)
-  DHARMa::testZeroInflation(sim_res)
-}
+# simulateResiduals(model, n): create n simulation-based residual replicates for GLMM checks.
+sim_res <- DHARMa::simulateResiduals(pois_laplace, n = 250, plot = FALSE)
+plot(sim_res)
+DHARMa::testDispersion(sim_res)
+DHARMa::testZeroInflation(sim_res)
 ```
 
 Compare Laplace and higher-order quadrature when cluster sizes are small or random-effect variance is large; inspect gradients/Hessian, singularity, simulated residual uniformity, dispersion, zero inflation, and subject-level influence.

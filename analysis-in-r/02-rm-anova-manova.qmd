@@ -14,6 +14,9 @@ execute: {echo: true, warning: false, message: false}
 source("_common.R")
 library(dplyr)
 library(tidyr)
+library(car)
+library(emmeans)
+library(nlme)
 ```
 
 ## 1. Aim
@@ -44,7 +47,9 @@ Base `aov()` gives the classical split-plot ANOVA decomposition. `car::Anova()` 
 ```{r}
 data("Orthodont", package = "nlme")
 orth <- as.data.frame(Orthodont) |>
+  # age_f marks repeated occasions; Subject is the within-subject clustering ID.
   mutate(Subject = factor(Subject), age_f = factor(age))
+# table(row_factor, column_factor) checks observations in every Sex-by-age cell.
 with(orth, table(Sex, age_f))
 ```
 
@@ -53,7 +58,9 @@ with(orth, table(Sex, age_f))
 ### Univariate repeated-measures ANOVA
 
 ```{r}
+# aov(response ~ effects + Error(ID / within_factor), data): Sex is between-subject; age_f is within.
 rm_aov <- aov(distance ~ Sex * age_f + Error(Subject / age_f), data = orth)
+# summary(aov_fit) reports separate between-subject and within-subject ANOVA strata.
 summary(rm_aov)
 ```
 
@@ -62,42 +69,44 @@ summary(rm_aov)
 ```{r}
 orth_wide <- orth |>
   select(Subject, Sex, age_f, distance) |>
+  # pivot_wider(): names_from creates one response column per age; values_from supplies its values.
   pivot_wider(names_from = age_f, values_from = distance) |>
   arrange(Subject)
 
+# Y is the multivariate response matrix, with columns deliberately ordered by occasion.
 Y <- as.matrix(orth_wide[c("8", "10", "12", "14")])
+# lm(matrix_response ~ predictors, data) fits the same between-subject model to all Y columns.
 mlm_fit <- lm(Y ~ Sex, data = orth_wide)
 
+# idata describes the within-subject meaning of Y's columns in exactly the same order.
 idata <- data.frame(age_f = factor(c(8, 10, 12, 14)))
-if (requireNamespace("car", quietly = TRUE)) {
-  rm_tests <- car::Anova(mlm_fit, idata = idata, idesign = ~age_f, type = 3)
-  summary(rm_tests, multivariate = TRUE)   # Pillai, Wilks, Hotelling-Lawley, Roy
-  summary(rm_tests, multivariate = FALSE)  # sphericity tests and GG/HF corrections
-}
+# Anova(model, idata, idesign): idesign names the within-subject factor; type selects sums of squares.
+rm_tests <- car::Anova(mlm_fit, idata = idata, idesign = ~age_f, type = 3)
+summary(rm_tests, multivariate = TRUE)   # Pillai, Wilks, Hotelling-Lawley, Roy
+summary(rm_tests, multivariate = FALSE)  # sphericity tests and GG/HF corrections
 ```
 
 ### Profile contrasts through a correlated Gaussian model
 
 ```{r}
+# gls(formula, data, correlation, weights): model the mean, within-ID correlation, and age variances.
 profile_gls <- nlme::gls(
   distance ~ Sex * age_f,
   data = orth,
+  # corSymm gives unrestricted within-subject correlations; varIdent allows variance by age.
   correlation = nlme::corSymm(form = ~ 1 | Subject),
   weights = nlme::varIdent(form = ~ 1 | age_f),
   method = "REML"
 )
 
-if (requireNamespace("emmeans", quietly = TRUE)) {
-  emm <- emmeans::emmeans(profile_gls, ~ Sex * age_f)
-  emmeans::joint_tests(emm)                       # omnibus estimable functions
-  emmeans::contrast(emm, "consec", by = "Sex")  # adjacent-time changes within sex
-  emmeans::contrast(
-    emmeans::contrast(emm, "consec", by = "Sex"),
-    "revpairwise",
-    by = NULL,
-    adjust = "holm"
-  )                                               # differences of changes
-}
+# emmeans(model, specs) requests model-adjusted means for every Sex-by-age_f cell.
+emm <- emmeans::emmeans(profile_gls, ~ Sex * age_f)
+emmeans::joint_tests(emm)                       # omnibus estimable functions
+# contrast(..., "consec", by = "Sex") computes adjacent-age changes separately by Sex.
+age_changes <- emmeans::contrast(emm, "consec", by = "Sex")
+age_changes
+# A second contrast compares those changes; by = NULL combines Sex groups; adjust controls multiplicity.
+emmeans::contrast(age_changes, "revpairwise", by = NULL, adjust = "holm")
 ```
 
 ### Repeated-measures sample size from a planned contrast
@@ -105,6 +114,7 @@ if (requireNamespace("emmeans", quietly = TRUE)) {
 For two equally allocated groups and planned contrast $c$, a normal-approximation calculation uses $\operatorname{Var}(c^{\mathsf T}\bar Y_1-c^{\mathsf T}\bar Y_0)=4c^{\mathsf T}\Sigma c/N$, where $N$ is total sample size.
 
 ```{r}
+# cov(Y) estimates the planned within-subject covariance; rows are subjects, columns are occasions.
 Sigma_plan <- stats::cov(Y)
 c_change <- c(-1, 0, 0, 1)            # age-14 minus age-8 change
 delta <- 2                              # target difference in mean changes
@@ -126,6 +136,7 @@ The `Sex:age_f` test is the parallelism test; if rejected, report time-specific 
 ```{r}
 stopifnot(!anyNA(Y), length(unique(orth$age_f)) == ncol(Y))
 
+# par(mfrow) lays out two base-R diagnostic panels; normalized residuals account for fitted covariance.
 par(mfrow = c(1, 2))
 plot(fitted(profile_gls), resid(profile_gls, type = "normalized"),
      xlab = "Fitted", ylab = "Normalized residual")

@@ -12,6 +12,10 @@ execute: {echo: true, warning: false, message: false}
 #| label: setup
 #| include: false
 source("_common.R")
+library(geepack)
+library(emmeans)
+library(marginaleffects)
+library(MASS)
 library(dplyr)
 library(lme4)
 ```
@@ -40,6 +44,7 @@ Use `summary()` for the complete fitted object; `broom.mixed::tidy()` for fixed/
 ```{r}
 data("epil", package = "MASS")
 epil <- MASS::epil |>
+  # subject is the cluster ID; period_c centers time; any_seizure converts count y to binary.
   mutate(subject = factor(subject), period_c = period - 1, any_seizure = as.integer(y > 0)) |>
   arrange(subject, period)
 ```
@@ -47,16 +52,18 @@ epil <- MASS::epil |>
 ## 5. Fit
 
 ```{r}
-if (requireNamespace("geepack", quietly = TRUE)) {
-  gee_bin <- geepack::geeglm(
-    any_seizure ~ trt * period_c + lbase + lage,
-    id = subject, waves = period, data = epil,
-    family = binomial, corstr = "exchangeable"
-  )
-}
+# geeglm(formula, id, waves, data, family, corstr): fit a population-average binary model.
+gee_bin <- geepack::geeglm(
+  any_seizure ~ trt * period_c + lbase + lage,
+  # subject clusters rows; period orders waves; exchangeable uses one within-subject correlation.
+  id = subject, waves = period, data = epil,
+  family = binomial, corstr = "exchangeable"
+)
 
-glmm_bin <- glmer(
+# glmer(): same response/fixed mean, plus (1 | subject) for subject-specific random intercepts.
+glmm_bin <- lme4::glmer(
   any_seizure ~ trt * period_c + lbase + lage + (1 | subject),
+  # binomial uses the logit link by default; nAGQ = 7 controls likelihood integration accuracy.
   epil, family = binomial, nAGQ = 7
 )
 ```
@@ -64,21 +71,20 @@ glmm_bin <- glmer(
 ## 6. Extract & interpret
 
 ```{r}
-if (exists("gee_bin")) {
-  cbind(estimate = coef(gee_bin), robust_se = sqrt(diag(gee_bin$geese$vbeta)))
-}
+# vbeta is geeglm's robust sandwich covariance; diagonal square roots are robust SEs.
+cbind(estimate = coef(gee_bin), robust_se = sqrt(diag(gee_bin$geese$vbeta)))
+# Exponentiating logit fixed effects gives conditional odds ratios.
 exp(fixef(glmm_bin))
 as.data.frame(VarCorr(glmm_bin))
 
-if (requireNamespace("emmeans", quietly = TRUE)) {
-  ss_trends <- emmeans::emtrends(glmm_bin, ~trt, var = "period_c", type = "response")
-  ss_trends
-  pairs(ss_trends, adjust = "holm")
-}
+# emtrends(model, specs, var): estimate period_c trends by treatment on the requested response scale.
+ss_trends <- emmeans::emtrends(glmm_bin, ~trt, var = "period_c", type = "response")
+ss_trends
+# pairs() compares treatment-specific trends; Holm adjustment controls multiplicity.
+pairs(ss_trends, adjust = "holm")
 
-if (requireNamespace("marginaleffects", quietly = TRUE)) {
-  marginaleffects::avg_comparisons(glmm_bin, variables = "trt", type = "response")
-}
+# avg_comparisons(model, variables, type) averages the response-probability treatment contrast over rows.
+marginaleffects::avg_comparisons(glmm_bin, variables = "trt", type = "response")
 ```
 
 | Quantity | Concise interpretation |
@@ -106,6 +112,7 @@ if (requireNamespace("marginaleffects", quietly = TRUE)) {
 Before interpreting, verify reference levels, time units/origin, contrast matrix, link/response scale, robust versus model-based covariance, convergence/singularity, dispersion, missing-data assumption, and whether predictions are conditional (`re.form = NULL`), random-effects-zero (`re.form = NA`), or marginalized/standardized.
 
 ```{r}
+# contrasts() reveals treatment coding; isSingular()/optinfo diagnose the random-effect fit.
 contrasts(epil$trt)
 isSingular(glmm_bin)
 glmm_bin@optinfo$conv$lme4$messages

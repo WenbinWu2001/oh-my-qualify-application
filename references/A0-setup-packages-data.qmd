@@ -1,0 +1,207 @@
+---
+title: "A0. Setup: packages and exam data"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+This page is the one-time setup reference for a clean R installation. It installs the packages referenced by the manual and the available applied-exam solutions, then shows the exact data-loading patterns used in those solutions. Run the installation chunk interactively; it is not evaluated while the site renders.
+
+## 1. Install all required packages
+
+The manual package list includes packages used in executable chapters and packages catalogued in [A3. R packages for longitudinal data analysis](A3-packages.qmd). The exam list covers the available 2019, 2020, 2021, 2023, 2024, and 2025 applied solutions.
+
+```{r}
+#| eval: false
+# Manual dependencies: data work, models, inference, missingness, and diagnostics.
+manual_packages <- c(
+  "broom", "broom.mixed", "car", "clubSandwich", "DHARMa",
+  "dplyr", "emmeans", "gee", "geepack", "ggplot2", "glmmTMB",
+  "influence.ME", "lme4", "lmerTest", "marginaleffects", "MASS",
+  "mice", "mitools", "modelsummary", "multcomp", "naniar", "nlme",
+  "norm", "ordinal", "pbkrtest", "performance", "see", "survey",
+  "tidyr", "WeightIt"
+)
+
+# Exam-solution dependencies include document rendering, Excel import, and prediction methods.
+exam_solution_packages <- c(
+  "car", "e1071", "geepack", "glmnet", "glmmTMB", "knitr",
+  "lme4", "MASS", "mice", "nlme", "randomForest", "readxl", "rmarkdown"
+)
+
+# unique() removes overlap; sort() makes the installation list easy to inspect.
+required_packages <- sort(unique(c(manual_packages, exam_solution_packages)))
+
+# installed.packages() reports the current libraries; setdiff() keeps only missing packages.
+installed_packages <- rownames(installed.packages())
+packages_to_install <- setdiff(required_packages, installed_packages)
+
+if (length(packages_to_install) > 0L) {
+  # Install runtime dependencies from CRAN; omit Suggests to avoid unrelated optional packages.
+  install.packages(
+    packages_to_install,
+    repos = "https://cloud.r-project.org",
+    dependencies = c("Depends", "Imports", "LinkingTo")
+  )
+} else {
+  message("All required packages are already installed.")
+}
+
+# requireNamespace() verifies installation without attaching every package and creating name conflicts.
+package_available <- vapply(
+  required_packages,
+  requireNamespace,
+  logical(1),
+  quietly = TRUE
+)
+
+if (!all(package_available)) {
+  stop(
+    "Still unavailable: ",
+    paste(required_packages[!package_available], collapse = ", ")
+  )
+}
+```
+
+Restart R after installation. Then load only the packages needed by the chapter or solution you are running:
+
+```{r}
+#| eval: false
+# library(package) attaches its exported functions for the current R session.
+library(dplyr)
+library(ggplot2)
+library(lme4)
+```
+
+Some packages contain compiled code. On macOS or Linux, install the current compiler toolchain if R must build a package from source. On Windows, use the matching Rtools version when a binary package is unavailable.
+
+## 2. Locate an exam's data directory
+
+Each solution first sources `_manual_bridge.R`. The bridge finds the qualifying-exam repository root, sources the manual helpers, and makes `repo_root` available. This avoids a machine-specific absolute path.
+
+```{r}
+#| eval: false
+# current_input(dir = TRUE) returns the rendered solution file's path; dirname() gets its folder.
+solution_dir <- dirname(
+  normalizePath(knitr::current_input(dir = TRUE), mustWork = TRUE)
+)
+
+# source(file) runs the shared bridge, which defines repo_root and loads manual helpers.
+source(file.path(solution_dir, "_manual_bridge.R"))
+
+# file.path() joins path components using the current operating system's separator.
+data_path <- file.path(
+  repo_root,
+  "resources",
+  "previous-exams",
+  "DoctoralApplication-2009-present",
+  "2025aug" # replace with 2019aug, 2020aug, 2021aug, 2023aug, or 2024aug
+)
+
+# Stop immediately if the year directory is wrong, then display its available files.
+stopifnot(dir.exists(data_path))
+list.files(data_path)
+```
+
+When working interactively outside an R Markdown solution, define `repo_root` once from the local checkout and keep all later paths relative to it:
+
+```{r}
+#| eval: false
+# Replace the placeholder with the qualifying-exam repository directory on this computer.
+repo_root <- normalizePath("<PATH_TO_QUALIFY_EXAM>", mustWork = TRUE)
+```
+
+## 3. Load comma-separated files with `read.csv()`
+
+`read.csv()` is the main reader in every available solution. It assumes a header row, comma separators, and periods as decimal marks.
+
+```{r}
+#| eval: false
+# read.csv(file, check.names): file is the CSV path; FALSE preserves original column names.
+hiv <- read.csv(
+  file.path(data_path, "HIV_data_clean.csv"),
+  check.names = FALSE
+)
+```
+
+Use `check.names = FALSE` when the exact source column names matter. With the default `check.names = TRUE`, R converts non-syntactic names to valid R names. Add `na.strings = c("", "NA")` only when the file's missing-value coding requires it.
+
+## 4. Load whitespace-delimited files with `read.table()`
+
+The 2019 and 2020 solutions use `read.table()` for `.dat` and `.txt` files whose fields are separated by spaces or tabs.
+
+```{r}
+#| eval: false
+# read.table(file, header): header = TRUE means the first record contains variable names.
+illness <- read.table(
+  file.path(data_path, "illness1.dat"),
+  header = TRUE
+)
+```
+
+By default, `read.table()` treats one or more whitespace characters as separators. Set `sep` explicitly if inspection shows a different delimiter.
+
+## 5. Load semicolon-separated files with `read.csv2()`
+
+The 2024 student file is semicolon-separated and begins with a UTF-8 byte-order mark.
+
+```{r}
+#| eval: false
+# read.csv2() defaults to sep = ";"; dec sets the decimal mark; fileEncoding handles the BOM.
+student_raw <- read.csv2(
+  file.path(data_path, "student.csv"),
+  dec = ".",
+  check.names = FALSE,
+  fileEncoding = "UTF-8-BOM"
+)
+```
+
+Ordinary `read.csv2()` defaults to `dec = ","`; the solution uses `dec = "."` because this particular file stores decimal points.
+
+## 6. Load Excel workbooks with `readxl::read_excel()`
+
+The 2025 solution reads the HIV codebook from an `.xlsx` workbook. `read_excel()` returns a tibble, so `as.data.frame()` is useful when later code expects a base data frame.
+
+```{r}
+#| eval: false
+library(readxl)
+
+# read_excel(path, sheet): path identifies the workbook; sheet selects a name or one-based position.
+hiv_codebook <- as.data.frame(
+  readxl::read_excel(
+    file.path(data_path, "HIV_data_codebook.xlsx"),
+    sheet = 1
+  )
+)
+```
+
+## 7. Reader map for the available solutions
+
+| Exam solution | Data-loading functions |
+|---|---|
+| 2019 | `read.csv()`, `read.table()` |
+| 2020 | `read.csv()`, `read.table()` |
+| 2021 | `read.csv()` |
+| 2023 | `read.csv()` |
+| 2024 | `read.csv()`, `read.csv2()` |
+| 2025 | `read.csv()`, `readxl::read_excel()` |
+
+No available solution uses `load()` or `readRDS()`. Do not substitute those functions unless the supplied data are actually `.RData` or `.rds` files.
+
+## 8. Check data immediately after loading
+
+```{r}
+#| eval: false
+# These checks confirm dimensions, names, types, representative rows, and missing-value counts.
+dim(hiv)
+names(hiv)
+str(hiv)
+head(hiv)
+colSums(is.na(hiv))
+```
+
+Always inspect the exam PDF and its same-year codebook before recoding variables. A successful file import does not establish that factor levels, missing-value codes, units, or observational structure were interpreted correctly.

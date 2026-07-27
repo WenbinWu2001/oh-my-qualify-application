@@ -15,6 +15,8 @@ source("_common.R")
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(nlme)
+library(naniar)
 ```
 
 ## 1. Aim
@@ -41,7 +43,9 @@ The empirical variogram estimates $\gamma(h)$; the time-indexed sample covarianc
 ```{r}
 data("Orthodont", package = "nlme")
 orth <- as.data.frame(Orthodont) |>
+  # mutate() adds/replaces columns: Subject is the cluster ID; age_f treats age as occasions.
   mutate(Subject = factor(Subject), age_f = factor(age))
+# glimpse(data) prints variable names, types, and representative values compactly.
 dplyr::glimpse(orth)
 ```
 
@@ -50,6 +54,7 @@ dplyr::glimpse(orth)
 ### Individual profiles and group means $\pm$ SE
 
 ```{r}
+# ggplot(data, aes(...)) maps age to x, response to y, subject to lines, and Sex to color.
 ggplot(orth, aes(age, distance, group = Subject, color = Sex)) +
   geom_line(alpha = 0.45, linewidth = 0.5) +
   geom_point(alpha = 0.65, size = 1) +
@@ -57,6 +62,7 @@ ggplot(orth, aes(age, distance, group = Subject, color = Sex)) +
   labs(y = "Orthodontic distance")
 
 mean_profile <- orth |>
+  # group_by() defines the Sex-age cells; summarize() returns one row per cell.
   group_by(Sex, age) |>
   summarize(
     n = sum(!is.na(distance)),
@@ -65,6 +71,7 @@ mean_profile <- orth |>
     .groups = "drop"
   )
 
+# Here aes(ymin, ymax) supplies ribbon bounds; the line/points show the cell means.
 ggplot(mean_profile, aes(age, mean, color = Sex, fill = Sex)) +
   geom_ribbon(aes(ymin = mean - se, ymax = mean + se), alpha = 0.18, color = NA) +
   geom_line(linewidth = 0.9) + geom_point() +
@@ -76,9 +83,11 @@ ggplot(mean_profile, aes(age, mean, color = Sex, fill = Sex)) +
 ```{r}
 orth_wide <- orth |>
   select(Subject, age_f, distance) |>
+  # pivot_wider(): names_from supplies new occasion columns; values_from fills responses.
   pivot_wider(names_from = age_f, values_from = distance)
 
 Y <- as.matrix(orth_wide[-1])
+# use = "pairwise.complete.obs" uses all complete pairs separately for each matrix entry.
 round(stats::cov(Y, use = "pairwise.complete.obs"), 3)
 round(stats::cor(Y, use = "pairwise.complete.obs"), 3)
 ```
@@ -86,9 +95,12 @@ round(stats::cor(Y, use = "pairwise.complete.obs"), 3)
 ### Empirical residual variogram
 
 ```{r}
+# gls(formula, data, method): response is left of ~; predictors are right; REML estimates covariance.
 eda_gls <- nlme::gls(distance ~ Sex * age, data = orth, method = "REML")
+# Variogram(object, form = ~ time | ID): age is time; Subject identifies independent trajectories.
 vg <- nlme::Variogram(eda_gls, form = ~ age | Subject, resType = "normalized")
 vg
+# smooth = TRUE overlays a nonparametric trend across time lags.
 plot(vg, smooth = TRUE)
 ```
 
@@ -97,6 +109,7 @@ plot(vg, smooth = TRUE)
 ```{r}
 # Reproducible incomplete copy; the source dataset remains unchanged.
 orth_miss <- orth |>
+  # replace(x, condition, value) sets selected responses to NA to create example patterns.
   mutate(
     distance = replace(distance, Subject %in% levels(Subject)[1:3] & age >= 12, NA_real_),
     distance = replace(distance, Subject %in% levels(Subject)[4:5] & age == 10, NA_real_)
@@ -104,17 +117,19 @@ orth_miss <- orth |>
 
 miss_matrix <- orth_miss |>
   select(Subject, age_f, distance) |>
+  # Put each scheduled age in its own column so one row represents one subject's pattern.
   pivot_wider(names_from = age_f, values_from = distance) |>
   arrange(Subject)
 
 pattern_table <- miss_matrix |>
+  # pick(-Subject) selects response columns; apply(..., 1, ...) builds a rowwise 1/0 string.
   mutate(pattern = apply(!is.na(pick(-Subject)), 1, paste0, collapse = "")) |>
+  # count(pattern) tabulates subjects per pattern; sort = TRUE orders most common first.
   count(pattern, name = "subjects", sort = TRUE)
 pattern_table
 
-if (requireNamespace("naniar", quietly = TRUE)) {
-  naniar::vis_miss(miss_matrix)
-}
+# vis_miss(data) plots observed versus missing cells for every variable and row.
+naniar::vis_miss(miss_matrix)
 ```
 
 ## 6. Extract & interpret
@@ -125,6 +140,7 @@ The spaghetti plot displays subject-level trajectory heterogeneity; the mean-pro
 
 ```{r}
 orth |>
+  # count(ID) counts rows/visits per subject; summarize() reports the observed range.
   count(Subject, name = "n_visit") |>
   summarize(min_visits = min(n_visit), max_visits = max(n_visit))
 

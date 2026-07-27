@@ -12,6 +12,10 @@ execute: {echo: true, warning: false, message: false}
 #| label: setup
 #| include: false
 source("_common.R")
+library(MASS)
+library(ordinal)
+library(broom)
+library(emmeans)
 library(dplyr)
 library(ggplot2)
 ```
@@ -40,27 +44,36 @@ and a GLM sets $g(\mu_{ij})=x_{ij}^{\mathsf T}\beta+\log(e_{ij})$, where $e_{ij}
 ```{r}
 data("epil", package = "MASS")
 epil <- MASS::epil |>
+  # subject is the repeated-measures ID; period_c sets period 1 as time zero; exposure is time at risk.
   mutate(subject = factor(subject), period_c = period - 1, exposure = 2)
+# glimpse(data) compactly checks variable names, classes, and representative values.
 dplyr::glimpse(epil)
 ```
 
 ## 5. Fit
 
 ```{r}
+# glm(formula, family, data): y is response; predictors follow ~; offset(log(exposure)) models a rate.
 pois_main <- glm(
   y ~ trt + period_c + lbase + lage + offset(log(exposure)),
+  # poisson(link = "log") uses a Poisson count variance and log mean/rate model.
   family = poisson(link = "log"), data = epil
 )
+# update(model, . ~ . + term) keeps the fitted specification and adds the named interaction.
 pois_interaction <- update(pois_main, . ~ . + trt:period_c)
 
+# summary(glm_fit) reports link-scale coefficients, SEs, tests, deviance, and residual df.
 summary(pois_interaction)
+# anova(..., test = "LRT") compares nested likelihood fits; AIC compares expected predictive fit.
 anova(pois_main, pois_interaction, test = "LRT")
 AIC(pois_main, pois_interaction)
 
+# Pearson chi-square divided by residual df is a quick overdispersion diagnostic.
 dispersion_ratio <- sum(residuals(pois_interaction, type = "pearson")^2) /
   df.residual(pois_interaction)
 dispersion_ratio
 
+# Quasi-Poisson inflates SEs; glm.nb() instead estimates a negative-binomial dispersion parameter.
 quasi_fit <- update(pois_interaction, family = quasipoisson(link = "log"))
 nb_fit <- MASS::glm.nb(
   y ~ trt * period_c + lbase + lage + offset(log(exposure)), data = epil
@@ -73,27 +86,28 @@ summary(nb_fit)
 
 ```{r}
 epil_ordinal <- epil |>
+  # cut() bins y at given breakpoints; ordered() declares increasing response categories.
   mutate(severity = ordered(cut(y, breaks = c(-Inf, 0, 4, Inf),
                                 labels = c("none", "moderate", "high"))))
 
-if (requireNamespace("ordinal", quietly = TRUE)) {
-  ordinal_glmm <- ordinal::clmm(
-    severity ~ trt + period_c + lbase + (1 | subject),
-    data = epil_ordinal, link = "logit", Hess = TRUE
-  )
-  summary(ordinal_glmm)
-}
+# clmm(formula, data, link): severity is ordinal; (1 | subject) is a subject random intercept.
+ordinal_glmm <- ordinal::clmm(
+  severity ~ trt + period_c + lbase + (1 | subject),
+  # Hess = TRUE retains the Hessian needed for standard errors.
+  data = epil_ordinal, link = "logit", Hess = TRUE
+)
+summary(ordinal_glmm)
 ```
 
 ## 6. Extract & interpret
 
 ```{r}
+# tidy(model, conf.int, exponentiate): return a coefficient table and convert log effects to ratios.
 broom::tidy(pois_interaction, conf.int = TRUE, exponentiate = TRUE)
 broom::tidy(nb_fit, conf.int = TRUE, exponentiate = TRUE)
 
-if (requireNamespace("emmeans", quietly = TRUE)) {
-  emmeans::emtrends(nb_fit, ~trt, var = "period_c", type = "response")
-}
+# emtrends(model, specs, var): estimate the period_c trend separately by treatment.
+emmeans::emtrends(nb_fit, ~trt, var = "period_c", type = "response")
 ```
 
 Exponentiated log-link coefficients are conditional rate ratios under the fitted mean model; the offset converts expected counts to rates per exposure unit. An interaction coefficient is a ratio of rate ratios, so constituent main effects are evaluated at `period_c = 0`. The quasi-Poisson fit rescales covariance without defining a full likelihood; the negative-binomial model changes the variance function and supports likelihood-based AIC/LRT.
@@ -101,6 +115,7 @@ Exponentiated log-link coefficients are conditional rate ratios under the fitted
 ## 7. Diagnostics
 
 ```{r}
+# Collect observation-level fitted means, residuals, influence, and subject IDs for diagnostics.
 glm_diag <- data.frame(
   fitted = fitted(pois_interaction),
   pearson = residuals(pois_interaction, type = "pearson"),
@@ -109,6 +124,7 @@ glm_diag <- data.frame(
   subject = epil$subject
 )
 
+# aes(fitted, pearson) assigns axes; the horizontal zero line reveals systematic residual patterns.
 ggplot(glm_diag, aes(fitted, pearson)) + geom_point() + geom_hline(yintercept = 0, lty = 2)
 head(glm_diag[order(glm_diag$cook, decreasing = TRUE), ], 8)
 

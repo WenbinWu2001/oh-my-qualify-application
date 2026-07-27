@@ -83,6 +83,13 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 
 ## Reference
 
+### [A0-setup-packages-data.qmd](references/A0-setup-packages-data.qmd)
+
+- One-shot installation of every package used by the manual and available applied-exam solutions.
+- Repository-relative construction and validation of exam-year data paths.
+- Usage of `read.csv()`, `read.table()`, `read.csv2()`, and `readxl::read_excel()`.
+- Post-import checks for dimensions, names, types, sample records, and missingness.
+
 ### [A1-inference-diagnostics.qmd](references/A1-inference-diagnostics.qmd)
 
 - ML/REML model-comparison rules, information criteria, and boundary-aware likelihood-ratio testing.
