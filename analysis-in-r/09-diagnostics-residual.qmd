@@ -1,0 +1,130 @@
+---
+title: "9. Residual diagnostics for GLMs"
+format: html
+execute: {echo: true, warning: false, message: false}
+---
+
+::: {.callout-note title="Diagnostic companions"}
+[GLM review](05-glm-review.qmd) · [GLMM diagnostics](06-glmm.qmd) · [Inference and diagnostics in R](../references/A1-inference-diagnostics.qmd) · [Diagnostic mathematics](../math-writeups/05-inference-diagnostics.qmd)
+:::
+
+```{r}
+#| label: setup
+#| include: false
+source("_common.R")
+library(MASS)
+```
+
+## 1. Aim
+
+Use a small, reusable diagnostic panel after fitting an ordinary GLM. The plots screen for mean-model problems, unusual observations, and sensitivity to individual rows; they do not replace substantive model checks or cluster-level diagnostics for repeated data.
+
+## 2. Example model
+
+`MASS::epil` contains repeated seizure counts. The negative-binomial model below is used only to demonstrate standard GLM diagnostics. Because it treats rows as independent, its inferential standard errors are not appropriate for the repeated-subject design.
+
+```{r}
+data("epil", package = "MASS")
+epil$period_c <- epil$period - 1
+epil$exposure <- 2
+
+# glm.nb() fits Var(Y | X) = mu + mu^2 / theta with a log mean model.
+nb_fit <- MASS::glm.nb(
+  y ~ trt * period_c + lbase + lage + offset(log(exposure)),
+  data = epil
+)
+summary(nb_fit)
+```
+
+## 3. Diagnostic quantities
+
+```{r}
+glm_diag <- data.frame(
+  observation = seq_len(nobs(nb_fit)),
+  fitted = fitted(nb_fit),
+  deviance = residuals(nb_fit, type = "deviance"),
+  pearson = residuals(nb_fit, type = "pearson"),
+  cook = cooks.distance(nb_fit),
+  leverage = hatvalues(nb_fit)
+)
+
+n <- nrow(glm_diag)
+p <- length(coef(nb_fit))
+```
+
+- Deviance and Pearson residuals compare each response with its fitted mean using the model's mean--variance relationship.
+- Cook's distance combines residual size and leverage to summarize how much a row can affect the fitted coefficients.
+- Leverage depends on the covariate pattern. A high-leverage row is unusual in predictor space but is not automatically an outlier.
+
+## 4. Four-panel screen
+
+```{r}
+#| label: fig-glm-residual-diagnostics
+#| fig-cap: "GLM diagnostic screen. Dashed lines mark common investigation thresholds: deviance residuals at -2 and 2, Cook's distance at 4/n, and leverage at 2p/n. These are heuristics, not deletion rules."
+#| fig-width: 8
+#| fig-height: 7
+old_par <- par(no.readonly = TRUE)
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+
+plot(
+  glm_diag$observation, glm_diag$deviance,
+  xlab = "Observation", ylab = "Deviance residual",
+  main = "Residual by observation"
+)
+abline(h = c(-2, 0, 2), col = c("red", "grey40", "red"), lty = 2)
+
+plot(
+  glm_diag$fitted, glm_diag$deviance,
+  xlab = "Fitted mean", ylab = "Deviance residual",
+  main = "Residual versus fitted"
+)
+abline(h = 0, col = "red", lty = 2)
+
+plot(
+  glm_diag$observation, glm_diag$cook, type = "h",
+  xlab = "Observation", ylab = "Cook's distance",
+  main = "Influence"
+)
+abline(h = 4 / n, col = "red", lty = 2)
+
+plot(
+  glm_diag$observation, glm_diag$leverage, type = "h",
+  xlab = "Observation", ylab = "Leverage",
+  main = "Leverage"
+)
+abline(h = 2 * p / n, col = "red", lty = 2)
+
+par(old_par)
+```
+
+Inspect the rows flagged by several measures and compare refitted estimates if they are scientifically important. Do not delete a row solely because it crosses a reference line.
+
+```{r}
+# Show the five rows with the largest Cook's distances.
+head(glm_diag[order(glm_diag$cook, decreasing = TRUE), ], 5)
+```
+
+## 5. What to look for
+
+| Pattern | Possible concern | Next check |
+|---|---|---|
+| Residual trend or curvature versus fitted mean | Wrong link or missing nonlinear/interaction term | Plot residuals against time and key predictors; refit a justified mean model |
+| Residual spread increasing beyond the fitted variance pattern | Overdispersion or wrong response family | Compare Pearson/deviance dispersion; consider a quasi or negative-binomial model |
+| Large Cook's distance and leverage | Coefficient sensitivity to one covariate pattern | Verify the row and compare estimates with and without it |
+| Several flagged rows from one subject | Cluster-level influence or unmodeled dependence | Use GEE/GLMM and delete or perturb the subject, not isolated visits |
+
+For binary and count GLMs, ordinary residuals are discrete and are not expected to follow a normal distribution. A standard normal Q--Q plot is therefore not a primary diagnostic. For GLMMs, use [simulation-based residuals](06-glmm.qmd#diagnostics) in addition to convergence, dispersion, and random-effect checks.
+
+## 6. Caveats
+
+- The lines at $|r_i^D|=2$, $4/n$, and $2p/n$ are screening heuristics. Their relevance depends on sample size, design, and estimand.
+- Observation-level Cook's distance and leverage are appropriate for independent GLMs. In longitudinal data, the independent subject or cluster is the primary unit for influence analysis.
+- Residual plots can reveal misspecification but cannot identify its cause by themselves.
+- A diagnostic flag should prompt data verification and sensitivity analysis, not automatic deletion.
+- **Source-backed:** Pearson/deviance residuals and GLM fit assessment follow the BIOS767 materials. **Standard-practice addition:** the compact four-panel display combines base-R influence measures into an exam-ready workflow.
+
+## 7. Source references
+
+- `BIOS-767-Part-013.pdf`, pp. 4--21, 26--37, and 60--68 (GLM families, mean--variance relationships, and fit assessment).
+- `BIOS-767-Part-012.pdf`, pp. 26--50 (outlyingness and influence).
+- [Inference and diagnostics in R](../references/A1-inference-diagnostics.qmd) for Gaussian, mixed-model, serial-dependence, and cluster-level diagnostics.

@@ -4,8 +4,8 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
-::: {.callout-note title="Mathematical companions"}
-[Generalized linear models](../math-writeups/06-generalized-linear-models.qmd) · [Marginal models and GEE](../math-writeups/07-marginal-models-gee.qmd) · [GLMMs and multilevel models](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Ordinal and nominal models](../math-writeups/09-ordinal-nominal-joint-models.qmd)
+::: {.callout-note title="Companions"}
+[Generalized linear models](../math-writeups/06-generalized-linear-models.qmd) · [Marginal models and GEE](../math-writeups/07-marginal-models-gee.qmd) · [GLMMs and multilevel models](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Ordinal and nominal models](../math-writeups/09-ordinal-nominal-joint-models.qmd) · [Residual diagnostics in R](09-diagnostics-residual.qmd)
 :::
 
 ```{r}
@@ -135,6 +135,8 @@ c(
 ```
 
 Assess link/mean misspecification, residual dispersion, influential observations/clusters, separation for binary models, and whether an exposure offset is correctly measured.
+
+See [Residual diagnostics for GLMs](09-diagnostics-residual.qmd) for a compact four-panel deviance-residual, Cook's-distance, and leverage workflow.
 
 ## 8. Caveats
 

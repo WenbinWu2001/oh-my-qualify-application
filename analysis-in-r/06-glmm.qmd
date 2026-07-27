@@ -156,6 +156,8 @@ DHARMa::testZeroInflation(sim_res)
 
 Compare Laplace and higher-order quadrature when cluster sizes are small or random-effect variance is large; inspect gradients/Hessian, singularity, simulated residual uniformity, dispersion, zero inflation, and subject-level influence.
 
+The [ordinary-GLM diagnostic panel](09-diagnostics-residual.qmd) is useful for understanding deviance residuals, Cook's distance, and leverage, but GLMM assessment should prioritize the simulation-based and cluster-aware checks above.
+
 ## 8. Caveats
 
 - GEE is population-averaged; GLMM is subject-specific. Do not compare coefficient magnitudes without marginalization and link-specific attenuation.

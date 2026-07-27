@@ -87,6 +87,12 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 - Factor-analysis covariance models and their distinction from PCA.
 - Principal-coordinate analysis and multidimensional scaling based on pairwise distances.
 
+### [09-diagnostics-residual.qmd](analysis-in-r/09-diagnostics-residual.qmd)
+
+- A compact four-panel residual, influence, and leverage screen for ordinary GLMs.
+- Deviance and Pearson residuals, Cook's distance, leverage, and practical investigation thresholds.
+- Guidance on nonnormal GLM residuals, repeated-data limitations, and cluster-level follow-up.
+
 ## Accompanying Mathematics
 
 ### [Mathematical writeup catalogue](math-writeups/00-index.qmd)

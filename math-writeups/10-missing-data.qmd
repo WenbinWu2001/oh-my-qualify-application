@@ -115,7 +115,7 @@ $$
 
 shows why the weighted estimating function has mean zero when the observation model is correct and positivity holds. Estimated weights require a variance estimator that accounts for estimating $\psi$. Stabilization and truncation can control variance but change the finite-sample bias-variance tradeoff.
 
-The key requirement for valid GEE inference is that the estimating function be unbiased at the true parameter value \(\beta_0\):
+The key requirement for valid GEE inference is that the estimating function be unbiased at the true parameter value $\beta_0$:
 
 $$
 E\left[

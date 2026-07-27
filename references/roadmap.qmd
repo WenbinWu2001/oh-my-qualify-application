@@ -194,7 +194,7 @@ Inference comes after the estimand and model are defined.
 | Missing-data analysis | Positivity and weight tails; influence of truncation/stabilization; imputation-chain convergence; observed-versus-imputed plausibility; sensitivity to MAR/MNAR assumptions |
 | Prediction | Leakage prevention; resampling by independent unit; tuning inside resampling; discrimination or error; calibration; temporal and external validation |
 
-[R diagnostics](A1-inference-diagnostics.qmd) · [Mathematics](../math-writeups/05-inference-diagnostics.qmd)
+[R diagnostics](A1-inference-diagnostics.qmd) · [GLM residual diagnostic panel](../analysis-in-r/09-diagnostics-residual.qmd) · [Mathematics](../math-writeups/05-inference-diagnostics.qmd)
 
 ## Sensitivity and reporting checklist {#roadmap-sensitivity-reporting}
 

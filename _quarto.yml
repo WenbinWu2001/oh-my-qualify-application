@@ -30,6 +30,7 @@ website:
           - analysis-in-r/06-glmm.qmd
           - analysis-in-r/07-missing-data.qmd
           - analysis-in-r/08-multivariate-testing-pca.qmd
+          - analysis-in-r/09-diagnostics-residual.qmd
       - section: "Accompanying Mathematics"
         contents:
           - math-writeups/00-index.qmd

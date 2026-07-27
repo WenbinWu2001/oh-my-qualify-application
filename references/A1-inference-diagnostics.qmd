@@ -4,8 +4,8 @@ format: html
 execute: {echo: true, warning: false, message: false}
 ---
 
-::: {.callout-note title="Mathematical companion"}
-[Inference and diagnostics](../math-writeups/05-inference-diagnostics.qmd)
+::: {.callout-note title="Companions"}
+[Inference and diagnostic mathematics](../math-writeups/05-inference-diagnostics.qmd) · [Residual diagnostics for GLMs](../analysis-in-r/09-diagnostics-residual.qmd)
 :::
 
 ```{r}

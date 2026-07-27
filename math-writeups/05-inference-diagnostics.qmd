@@ -5,6 +5,10 @@ format: html
 
 **Slides covered.** `BIOS-767-Part-007.pdf`, slides 55-67; `BIOS-767-Part-008.pdf`, slides 15-26; `BIOS-767-Part-009.pdf`, slides 79-123; `BIOS-767-Part-011.pdf`, slides 4-54; `BIOS-767-Part-012.pdf`, slides 4-52; `Lecture-07-Part2.pdf`, document pp. 8-11; `anova-refitting.pdf`, document pp. 1-5.
 
+::: {.callout-note title="R companions"}
+[Inference and diagnostics](../references/A1-inference-diagnostics.qmd) · [Residual diagnostics for GLMs](../analysis-in-r/09-diagnostics-residual.qmd)
+:::
+
 ## Motivation
 
 Longitudinal inference depends on the independent sampling unit, covariance estimator, likelihood fit, and parameter-space geometry. Diagnostics must therefore assess whole response profiles and cluster influence, not only observation-level residuals.
