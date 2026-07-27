@@ -37,7 +37,7 @@ Examples include CS, $\Sigma_{jk}=\sigma^2\{(1-\rho)I(j=k)+\rho\}$; discrete AR(
 
 The LMM is
 $$
-Y_i=X_i\beta+Z_i b_i+\varepsilon_i,qquad
+Y_i=X_i\beta+Z_i b_i+\varepsilon_i,\qquad
 b_i\sim N(0,D),\quad \varepsilon_i\sim N(0,R_i),\quad b_i\perp\varepsilon_i,
 $$
 so $\operatorname{Var}(Y_i)=Z_iDZ_i^{\mathsf T}+R_i$ and
