@@ -2,6 +2,8 @@
 
 **Course provenance.** I took **BIOS767: Longitudinal Data Analysis** in Spring 2026. The course materials form the main backbone of this repository, supplemented by the cited notes, assignments, and external references.
 
+> [**Practical analysis roadmap**](roadmap.qmd) — Route a real-data exam problem from outcome and estimand through modeling, missingness, inference, diagnostics, sensitivity analysis, and reporting.
+
 Each chapter is self-contained and sources `_common.R`. Render the project from this directory so relative paths and the shared setup resolve correctly.
 
 ## Analysis in R

@@ -237,9 +237,9 @@ The point estimator remains consistent under working-covariance misspecification
 Use an iterative, scientifically constrained sequence:
 
 1. Fit a sufficiently rich preliminary mean so residual covariance is not forced to absorb mean misspecification.
-2. Compare plausible covariance structures under REML while holding $X$ fixed.
-3. Compare nested or nonnested mean structures under ML while holding the covariance family fixed.
-4. Recheck the covariance after selecting the mean.
+2. Choose a plausible preliminary covariance structure; use unstructured only when the visit pattern and sample size support it.
+3. Compare nested or nonnested mean structures under ML while holding the preliminary covariance family fixed.
+4. With the selected mean held fixed, compare plausible covariance structures, preferably under REML.
 5. Refit the final model under REML and perform diagnostics.
 
 For nested interior hypotheses,

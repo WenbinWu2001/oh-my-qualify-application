@@ -18,6 +18,8 @@ website:
     contents:
       - text: "Topic catalogue"
         href: index.qmd
+      - text: "Practical analysis roadmap"
+        href: roadmap.qmd
       - section: "Analysis in R"
         contents:
           - analysis-in-r/01-eda-descriptive.qmd
