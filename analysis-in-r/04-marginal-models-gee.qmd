@@ -39,7 +39,7 @@ The model-based covariance is $B^{-1}$; the sandwich covariance is $B^{-1}MB^{-1
 
 ## 3. R packages/functions
 
-`geepack::geeglm()` fits GEE with independence, exchangeable, AR(1), and unstructured working correlations; `geepack::QIC()` compares mean/correlation specifications; the internal `geese` object exposes robust and naive covariance and the estimated scale. `gee::gee()` is a useful alternative when SAS-like naive/robust output is desired.
+`geepack::geeglm()` fits GEE with independence (`"independence"`), compound symmetry (`"exchangeable"`), AR(1) (`"ar1"`), and unstructured working correlations (`""unstructured"`); `geepack::QIC()` compares mean/correlation specifications; the internal `geese` object exposes robust and naive covariance and the estimated scale. `gee::gee()` is a useful alternative when SAS-like naive/robust output is desired.
 
 ## 4. Data
 

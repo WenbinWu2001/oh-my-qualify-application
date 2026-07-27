@@ -187,7 +187,7 @@ Inference comes after the estimand and model are defined.
 | Model class | Minimum diagnostic set |
 |---|---|
 | Universal | Verify coding, denominators, sample and cluster counts, visit order, convergence, implausible estimates, and influence at the independent-unit level |
-| Gaussian marginal model or LMM | Raw and normalized residuals; marginal and conditional residuals; residual-versus-time and residual-versus-fitted plots; Q-Q plots; variograms; Mahalanobis distance; subject-level Cook distances/DFBETAs; covariance identifiability and singular fits |
+| Gaussian marginal model or LMM | Raw and Cholesky-normalized residuals; marginal and conditional residuals; residual-versus-time and residual-versus-fitted plots; Q-Q plots; variograms; Mahalanobis distance; subject-level Cook distances/DFBETAs; covariance identifiability and singular fits |
 | GLM | Pearson and deviance residuals; binned residuals for binary means; calibration; leverage/influence; dispersion; separation or sparse cells |
 | GEE | Cluster ordering and sizes; fitted working correlation; robust versus model-based SEs; cluster influence; residual mean patterns; few-cluster corrections when asymptotics are weak |
 | GLMM | Optimizer convergence, gradients, and singularity; quadrature sensitivity; simulation-based residuals; overdispersion; zero inflation; random-effect identifiability |
