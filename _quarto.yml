@@ -18,8 +18,6 @@ website:
     contents:
       - text: "Topic catalogue"
         href: index.qmd
-      - text: "Practical analysis roadmap"
-        href: roadmap.qmd
       - section: "Analysis in R"
         contents:
           - analysis-in-r/01-eda-descriptive.qmd
@@ -48,6 +46,7 @@ website:
           - math-writeups/13-sample-size-power.qmd
       - section: "Reference"
         contents:
+          - references/roadmap.qmd
           - references/A0-setup-packages-data.qmd
           - references/A1-inference-diagnostics.qmd
           - references/A2-interpretation-cheatsheet.qmd

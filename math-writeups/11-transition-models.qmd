@@ -13,7 +13,7 @@ $$
 H_{ij}=(Y_{i1},\ldots,Y_{i,j-1}).
 $$
 
-The estimand is a covariate effect conditional on specified past responses, not a marginal population-average or random-effect-conditional effect.
+The estimand is a covariate effect conditional on *specified past responses*, not a marginal population-average or random-effect-conditional effect.
 
 ## Generalized autoregressive formulation
 
@@ -112,7 +112,7 @@ Lagged outcomes must be observed to form a transition. Missing $Y_{i,j-1}$ can r
 
 ## When to apply
 
-Use a transition model when the scientific question is explicitly dynamic: how the present depends on the past. Do not choose it solely as a computational device for within-subject correlation when population-average or latent-trajectory effects are the target.
+Use a transition model when the scientific question is explicitly dynamic: *how the present depends on the past*. Do not choose it solely as a computational device for within-subject correlation when population-average or latent-trajectory effects are the target.
 
 ## External cross-check
 

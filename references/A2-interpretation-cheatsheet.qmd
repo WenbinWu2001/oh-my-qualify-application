@@ -1,135 +1,597 @@
 ---
-title: "A2. Interpretation cheatsheet"
-format: html
-execute: {echo: true, warning: false, message: false}
+title: "A2. Scientific interpretation templates"
+format:
+  html:
+    toc: true
+    toc-depth: 3
 ---
 
-::: {.callout-note title="Mathematical companions"}
-[Math-writeup catalogue](../math-writeups/00-index.qmd) · [Gaussian marginal models](../math-writeups/03-gaussian-marginal-models.qmd) · [LMMs](../math-writeups/04-linear-mixed-models.qmd) · [GEE](../math-writeups/07-marginal-models-gee.qmd) · [GLMMs](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) · [Transition models](../math-writeups/11-transition-models.qmd)
+::: {.callout-note title="How to use this page"}
+Replace text in `CAPITALIZED PLACEHOLDERS`, verify the model scale and reference levels, and then read the sentence aloud. The templates are deliberately scientific rather than software-specific: the same wording works whether estimates came from base R, `lme4`, `nlme`, `geepack`, `MASS`, or another package.
 :::
 
-```{r}
-#| label: setup
-#| include: false
-source("_common.R")
-library(geepack)
-library(emmeans)
-library(marginaleffects)
-library(MASS)
-library(dplyr)
-library(lme4)
-```
+::: {.callout-tip title="Source map"}
+The estimand distinctions are source-backed by BIOS 767 Part 22, PDF pp. 24-35: marginal models target population averages, mixed-effects models describe natural variation across individuals and conditional effects, and transition models condition explicitly on response history. The sentence structures and exam cautions are synthesized from Joyce's 2025 solution and the applied Codex solutions for 2019, 2020, 2021, 2023, 2024, and 2025. Additional cautions are standard statistical-practice guidance and are labeled where especially important.
+:::
 
-## 1. Aim
+## Mathematical companions
 
-This appendix maps common output quantities to their estimands and valid one-sentence interpretations. Interpretations are conditional on coding, link, time origin, interaction structure, covariance estimator, and missing-data assumptions.
+[Gaussian marginal models](../math-writeups/03-gaussian-marginal-models.qmd) | [Linear mixed models](../math-writeups/04-linear-mixed-models.qmd) | [Generalized linear models](../math-writeups/06-generalized-linear-models.qmd) | [GEE](../math-writeups/07-marginal-models-gee.qmd) | [GLMMs](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) | [Ordinal and nominal models](../math-writeups/09-ordinal-nominal-joint-models.qmd) | [Transition models](../math-writeups/11-transition-models.qmd)
 
-## 2. Model specification
+## 1. The six-part interpretation sentence
 
-$$
-\text{GEE: }g\{E(Y_{ij})\}=x_{ij}^{\mathsf T}\beta_{PA},
-\qquad
-\text{GLMM: }g\{E(Y_{ij}\mid b_i)\}=x_{ij}^{\mathsf T}\beta_{SS}+z_{ij}^{\mathsf T}b_i.
-$$
-For Gaussian LMMs, identity-link marginalization leaves $\beta$ unchanged. For logistic random-intercept models, $\beta_{PA}\approx\beta_{SS}/\sqrt{1+0.35\sigma_b^2}$.
+Before writing, identify six items:
 
-## 3. R packages/functions
+1. **Estimand:** mean difference, odds ratio, risk ratio, rate ratio, slope difference, probability difference, or another contrast.
+2. **Population level:** population-average, subject-specific, cluster-specific, or conditional on response history.
+3. **Contrast:** one-unit change, clinically meaningful $d$-unit change, named category versus reference, or treatment versus control.
+4. **Conditions:** covariates held fixed, time point, reference group, and random effects or response history when relevant.
+5. **Magnitude and direction:** units or percent higher/lower, not merely the sign of $\widehat\beta$.
+6. **Uncertainty:** 95% CI and a calibrated evidence statement.
 
-Use `summary()` for the complete fitted object; `broom.mixed::tidy()` for fixed/random parameters; `emmeans` for estimable means/trends/interaction contrasts; `marginaleffects` for response-scale standardization; `VarCorr()`/`ranef()` for variance components and BLUPs.
+> **Master template:** "Among `STUDY POPULATION`, after adjusting for `COVARIATES`, `EXPOSURE CONTRAST` was associated with `EFFECT ESTIMATE AND UNIT` in `OUTCOME`, `POPULATION/CONDITIONAL QUALIFIER` (95% CI: `LOWER` to `UPPER`)."
 
-## 4. Data
+For a randomized treatment, replace "was associated with" by "was estimated to change" or "participants assigned to `TREATMENT` had." For a nonrandomized predictor, retain associational wording unless the design and analysis justify a causal claim.
 
-`MASS::epil` is converted to a binary repeated outcome for a direct population-average versus subject-specific comparison.
+### Fast model-to-language map
 
-```{r}
-data("epil", package = "MASS")
-epil <- MASS::epil |>
-  # subject is the cluster ID; period_c centers time; any_seizure converts count y to binary.
-  mutate(subject = factor(subject), period_c = period - 1, any_seizure = as.integer(y > 0)) |>
-  arrange(subject, period)
-```
+| Model and link | Exponentiate $\widehat\beta$? | Primary interpretation |
+|---|---:|---|
+| LM, Gaussian marginal model, or identity-link GEE | No | Adjusted mean difference or mean slope |
+| LMM with identity link | No | Conditional mean difference; fixed effects also describe the marginal mean under the linear model |
+| Logistic GLM | Yes | Adjusted odds ratio |
+| Log-link binary GLM | Yes | Adjusted risk ratio |
+| Logistic GEE | Yes | Population-average odds ratio |
+| Logistic GLMM | Yes | Subject- or cluster-specific conditional odds ratio |
+| Poisson/negative-binomial GLM with log link | Yes | Adjusted mean ratio; rate ratio when an exposure offset is present |
+| Poisson/negative-binomial GEE with log link | Yes | Population-average rate ratio |
+| Poisson/negative-binomial GLMM with log link | Yes | Subject- or cluster-specific conditional rate ratio |
+| Probit GLM | Usually no direct ratio | Change on latent Normal-index scale; prefer predicted probabilities |
+| Proportional-odds model | Yes | Common cumulative odds ratio, after checking direction |
+| Multinomial logit | Yes | Category-specific odds ratio versus the outcome reference category |
+| Continuation-ratio model | Yes | Conditional odds ratio of progressing, given the subject reached that stage |
+| Transition model | Depends on link | Effect conditional on specified past responses |
 
-## 5. Fit
+## 2. Universal fixed-effect templates
 
-```{r}
-# geeglm(formula, id, waves, data, family, corstr): fit a population-average binary model.
-gee_bin <- geepack::geeglm(
-  any_seizure ~ trt * period_c + lbase + lage,
-  # subject clusters rows; period orders waves; exchangeable uses one within-subject correlation.
-  id = subject, waves = period, data = epil,
-  family = binomial, corstr = "exchangeable"
-)
+Let the linear predictor contain $\beta_x x$.
 
-# glmer(): same response/fixed mean, plus (1 | subject) for subject-specific random intercepts.
-glmm_bin <- lme4::glmer(
-  any_seizure ~ trt * period_c + lbase + lage + (1 | subject),
-  # binomial uses the logit link by default; nAGQ = 7 controls likelihood integration accuracy.
-  epil, family = binomial, nAGQ = 7
-)
-```
+### Continuous predictor
 
-## 6. Extract & interpret
+For a one-unit increase:
 
-```{r}
-# vbeta is geeglm's robust sandwich covariance; diagonal square roots are robust SEs.
-cbind(estimate = coef(gee_bin), robust_se = sqrt(diag(gee_bin$geese$vbeta)))
-# Exponentiating logit fixed effects gives conditional odds ratios.
-exp(fixef(glmm_bin))
-as.data.frame(VarCorr(glmm_bin))
+> **Identity-link template:** "Holding `OTHER COVARIATES` fixed, a one-`X UNIT` increase in `X` was associated with an average `BETA`-`Y UNIT` `INCREASE/DECREASE` in `Y`."
 
-# emtrends(model, specs, var): estimate period_c trends by treatment on the requested response scale.
-ss_trends <- emmeans::emtrends(glmm_bin, ~trt, var = "period_c", type = "response")
-ss_trends
-# pairs() compares treatment-specific trends; Holm adjustment controls multiplicity.
-pairs(ss_trends, adjust = "holm")
+For a scientifically meaningful $d$-unit increase, calculate $d\widehat\beta_x$ on an identity scale or $\exp(d\widehat\beta_x)$ on a log/logit scale:
 
-# avg_comparisons(model, variables, type) averages the response-probability treatment contrast over rows.
-marginaleffects::avg_comparisons(glmm_bin, variables = "trt", type = "response")
-```
+> **Scaled template:** "For each `D`-`X UNIT` increase in `X`, the adjusted `MEAN/ODDS/RATE` of `Y` was `EFFECT` `UNITS/TIMES AS LARGE`, holding `OTHER COVARIATES` fixed."
 
-| Quantity | Concise interpretation |
+Never say "a one-unit increase causes" unless causal identification is justified.
+
+### Binary predictor
+
+Suppose `GROUP = 0` is the reference and `GROUP = 1` is the comparison.
+
+> **Difference template:** "At the same values of `OTHER COVARIATES`, the adjusted mean `Y` was `BETA` `Y UNITS` `HIGHER/LOWER` for `GROUP 1` than for `GROUP 0`."
+
+> **Ratio template:** "At the same values of `OTHER COVARIATES`, the adjusted `ODDS/RATE` of `EVENT` was `RATIO` times as high for `GROUP 1` as for `GROUP 0`."
+
+If the ratio is below 1, the clearest percent wording is $100(1-\mathrm{ratio})\%$ lower. If it is above 1, use $100(\mathrm{ratio}-1)\%$ higher.
+
+### Multi-level categorical predictor
+
+Interpret every printed coefficient against the factor's reference level:
+
+> "`LEVEL K` had an adjusted `MEAN/ODDS/RATE` of `OUTCOME` that was `EFFECT` relative to `REFERENCE LEVEL`, holding `OTHER COVARIATES` fixed."
+
+One coefficient tests one level contrast. To claim that the categorical variable as a whole is associated with the outcome, use an omnibus Wald or likelihood-ratio test for all of its nonreference coefficients.
+
+### Centered predictor
+
+If $x_c=x-c$, a slope interpretation is unchanged, but the intercept and interacting main effects are evaluated at $x=c$:
+
+> "Because `X` was centered at `C`, the intercept is the expected `Y` for `REFERENCE GROUP` at `X = C`, not at `X = 0`."
+
+### Transformed predictor
+
+| Model term | Correct contrast |
 |---|---|
-| LMM fixed intercept | Expected response for the reference covariate pattern at the time origin; recenter time if this is extrapolative. |
-| LMM fixed slope | Expected response change per time unit for the reference group; with an interaction it is not the common slope. |
-| Group x time | Difference in time slopes (continuous time) or difference of occasion contrasts (factor time). |
-| Random-intercept variance | Residual between-subject heterogeneity in the conditional intercept. |
-| Random-slope variance | Residual between-subject heterogeneity in conditional change; marginal variance/correlation then depends on time. |
-| Random-effect correlation | Association between latent deviations; inspect time centering because it changes the intercept and its correlation with slope. |
-| BLUP/conditional mode | Shrunken subject deviation conditional on the fitted population model and variance parameters. |
-| Random-intercept ICC | $\tau_0^2/(\tau_0^2+\sigma^2)$ for the Gaussian random-intercept model only. |
-| GEE coefficient | Population-average change in the link of the marginal mean. |
-| GEE working $\alpha$ | Nuisance association parameter used for efficiency; not generally a target unless association is explicitly modeled. |
-| GEE robust SE | Sandwich uncertainty, asymptotically robust to working-correlation misspecification. |
-| GEE model-based SE | Valid only if the working covariance is correctly specified. |
-| GEE scale $\phi$ | Marginal variance multiplier under the package's scale-estimation rule. |
-| Logistic GLMM $e^{\beta}$ | Subject-specific conditional odds ratio at equal random effects. |
-| Logistic GEE $e^{\beta}$ | Population-average marginal odds ratio. |
-| Poisson/log GLMM $e^{\beta}$ | Conditional rate ratio; an offset fixes the exposure denominator. |
-| Satterthwaite/KR df | Approximate denominator df for a specified fixed-effect test; KR also adjusts covariance/test statistic. |
+| $\log(x)$ | Compare $x_2$ with $x_1$ using $\widehat\beta\log(x_2/x_1)$ |
+| $\sqrt{x}$ | Compare $x_2$ with $x_1$ using $\widehat\beta(\sqrt{x_2}-\sqrt{x_1})$ |
+| $x^2$ with $x$ | Effect of a change depends on starting $x$; do not interpret $\beta_{x^2}$ alone |
+| Spline basis | Report fitted means, slopes, or contrasts at meaningful $x$ values |
 
-## 7. Diagnostics
+## 3. Linear models and Gaussian marginal models
 
-Before interpreting, verify reference levels, time units/origin, contrast matrix, link/response scale, robust versus model-based covariance, convergence/singularity, dispersion, missing-data assumption, and whether predictions are conditional (`re.form = NULL`), random-effects-zero (`re.form = NA`), or marginalized/standardized.
+For
 
-```{r}
-# contrasts() reveals treatment coding; isSingular()/optinfo diagnose the random-effect fit.
-contrasts(epil$trt)
-isSingular(glmm_bin)
-glmm_bin@optinfo$conv$lme4$messages
-```
+$$
+E(Y_i\mid X_i)=\beta_0+\beta_1X_{i1}+\cdots+\beta_pX_{ip},
+$$
 
-## 8. Caveats
+each coefficient is an adjusted mean contrast on the outcome's original scale.
 
-- A main effect involved in an interaction is evaluated at the reference/zero value of the interacting variable.
-- `re.form = NA` in a nonlinear mixed model sets $b=0$; it does not integrate over $b$. Use marginal standardization or numerical integration for population-average predictions.
-- Odds ratios are noncollapsible; PA/SS differences can occur without confounding and are not explained solely by bias.
-- `emmeans` averages over the reference grid according to its weighting rule; state whether weights are equal, proportional, or standardized to a target population.
-- Report effect, scale, unit, contrast, uncertainty method, and multiplicity adjustment in the same sentence.
-- **Source-backed:** interpretation distinctions and attenuation follow BIOS 767/STAT 571. **Standard-practice addition:** `marginaleffects` gives explicit response-scale standardization.
+### Intercept
 
-## 9. Source references
+> "The intercept estimates the mean `OUTCOME` for `ALL REFERENCE CATEGORIES` when every continuous predictor equals zero. `STATE WHETHER THIS IS SCIENTIFICALLY MEANINGFUL`."
 
-- UW STAT571 (conditional and marginal model families, PA/SS relationships, and interpretation).
-- `BIOS_767_Weideman_Typed_Notes_with_Examples.pdf`, pp. 80--85 (generalized mixed-model coefficient interpretation and attenuation).
-- `BIOS-767-Part-010.pdf`, pp. 40--58 and 62--71 (fixed effects, random effects, BLUPs, ICC).
-- `BIOS-767-Part-014.pdf`, pp. 39--52 and 62--68 (marginal GEE interpretation and covariance estimators).
+If zero is outside the data range, do not devote scientific interpretation to the intercept; recenter predictors if a meaningful baseline is needed.
+
+### Continuous slope
+
+> "After adjusting for `COVARIATES`, mean `OUTCOME` was estimated to `INCREASE/DECREASE` by `BETA` `Y UNITS` for each one-`X UNIT` increase in `X`."
+
+### Treatment contrast
+
+> "After adjusting for `COVARIATES`, participants assigned to `TREATMENT` had mean `OUTCOME` `ABS(BETA)` `Y UNITS` `HIGHER/LOWER` than participants assigned to `CONTROL`."
+
+### Log-transformed outcome
+
+If $\log(Y)$ is modeled and the coefficient is $\beta$:
+
+> "Holding `COVARIATES` fixed, the geometric mean of `Y` was multiplied by $\exp(\widehat\beta)$ for `CONTRAST`, corresponding to an estimated $100\{\exp(\widehat\beta)-1\}\%$ `INCREASE/DECREASE`."
+
+Use the exact exponential transformation for moderate effects; the approximation $100\widehat\beta\%$ is only reliable near zero.
+
+### Weighted least squares
+
+The coefficient interpretation follows the same mean model as LM. The weights change which observations contribute most to estimation and the variance calculation:
+
+> "The fitted coefficient estimates the adjusted mean contrast under the stated weighted mean model; observations with larger `PRECISION/SAMPLING WEIGHT` contributed `MORE/ACCORDING TO TARGET REPRESENTATION`."
+
+State whether weights are inverse variances, survey weights, inverse-probability weights, or frequency weights because their scientific meanings differ.
+
+## 4. Time and interaction templates
+
+Consider
+
+$$
+E(Y)=\beta_0+\beta_TT+\beta_t t+\beta_{Tt}Tt+\cdots,
+$$
+
+where $T=0$ is control and $T=1$ is treatment.
+
+### Continuous time
+
+| Quantity | Meaning |
+|---|---|
+| $\beta_0$ | Control mean at time zero |
+| $\beta_T$ | Treatment-control mean difference at time zero |
+| $\beta_t$ | Control slope per unit time |
+| $\beta_t+\beta_{Tt}$ | Treatment slope per unit time |
+| $\beta_{Tt}$ | Treatment-control difference in slopes |
+| $\beta_T+t\beta_{Tt}$ | Treatment-control mean difference at time $t$ |
+
+> **Control-slope template:** "Within the control group, adjusted mean `OUTCOME` changed by `BETA_t` `Y UNITS` per `TIME UNIT`."
+
+> **Interaction template:** "The treatment group changed by `BETA_Tt` `Y UNITS` per `TIME UNIT` more/less than the control group. Equivalently, the treatment and control slopes were `TREATMENT SLOPE` and `CONTROL SLOPE`."
+
+> **Time-specific treatment template:** "At `TIME = t`, the adjusted treatment-control mean difference was `BETA_T + t*BETA_Tt` `Y UNITS`."
+
+Do not add the treatment main effect $\beta_T$ to the interaction and call the result a slope. The treatment slope is $\beta_t+\beta_{Tt}$.
+
+### Categorical visit
+
+With visit indicators and treatment-by-visit interactions:
+
+> "At `VISIT K`, the adjusted treatment-control difference was `MAIN TREATMENT EFFECT + VISIT-K INTERACTION` `Y UNITS`. The visit interaction is the additional treatment-control difference at visit `K` relative to the reference visit."
+
+This is a difference-in-differences interpretation. A joint test of all treatment-by-visit terms asks whether the profiles differ anywhere after baseline.
+
+### Two binary predictors
+
+For $X$, $Z$, and $XZ$:
+
+> "The effect of `X` among `Z = 0` is `BETA_X`; among `Z = 1` it is `BETA_X + BETA_XZ`. The interaction `BETA_XZ` is the difference between those two effects."
+
+On a logit or log scale, exponentiating $\beta_{XZ}$ gives a ratio of odds ratios or rate ratios, not a probability difference.
+
+### Nonlinear time
+
+For quadratic time, the instantaneous slope is $\beta_t+2\beta_{t^2}t$ plus any group-specific interaction terms. Prefer:
+
+> "The fitted trajectory was `CURVED/DESCRIPTION`; the estimated mean change from `TIME A` to `TIME B` was `CONTRAST`, and the treatment-control difference in that change was `INTERACTION CONTRAST`."
+
+High-order polynomial and spline-basis coefficients rarely have useful standalone scientific interpretations.
+
+## 5. Linear mixed-effects models
+
+For
+
+$$
+Y_{ij}=x_{ij}^{\mathsf T}\beta+z_{ij}^{\mathsf T}b_i+\epsilon_{ij},
+$$
+
+the fixed effects describe the mean conditional on random effects. With an identity link and mean-zero random effects, integrating over $b_i$ leaves the fixed-effect mean structure unchanged, so the same $\beta$ also describes marginal mean contrasts.
+
+### Fixed-effect wording
+
+> **LMM template:** "Among subjects with the same modeled random-effect value and after adjusting for `COVARIATES`, `CONTRAST` was associated with an average `BETA`-`Y UNIT` difference in `OUTCOME`. Because this is an identity-link LMM with mean-zero random effects, the fixed-effect mean contrast is also the corresponding population mean contrast."
+
+For a random-intercept treatment-by-time LMM:
+
+> "Conditional on the subject-specific random intercept, the treatment group changed by `INTERACTION` `Y UNITS` per `TIME UNIT` more/less than placebo. The interaction is the between-group slope difference."
+
+### Random intercept
+
+> "The estimated random-intercept variance `TAU0^2` quantifies residual between-`SUBJECT/CLUSTER` heterogeneity in expected `OUTCOME` at the time origin after accounting for the fixed effects."
+
+Do not interpret a variance as an outcome difference. Its square root is the random-intercept SD and is on the outcome scale for an LMM.
+
+### Random slope
+
+> "The estimated random-slope variance `TAU1^2` indicates that subjects' `TIME/EXPOSURE` slopes vary around the population slope; the random-slope SD is `TAU1` `Y UNITS` per `X UNIT`."
+
+### Random intercept-slope correlation
+
+> "The estimated random-effect correlation `RHO` suggests that subjects with higher conditional outcome levels at the centered time origin tend to have `MORE POSITIVE/MORE NEGATIVE` slopes."
+
+This correlation depends on where time is centered. Do not interpret it without stating the time origin.
+
+### Gaussian random-intercept ICC
+
+$$
+\mathrm{ICC}=\frac{\tau_0^2}{\tau_0^2+\sigma^2}.
+$$
+
+> "The estimated ICC of `ICC` means that approximately `100*ICC`% of the residual variance is attributable to between-subject differences under this Gaussian random-intercept model."
+
+### BLUP or conditional mode
+
+> "Subject `I` had an estimated random deviation of `B_I` `Y UNITS` from the population intercept after shrinkage toward zero."
+
+A BLUP is a model-based prediction, not a directly observed subject effect.
+
+## 6. Binary GLMs: logistic and probit
+
+### Logistic regression
+
+For
+
+$$
+\operatorname{logit}\{P(Y=1\mid X)\}=X^{\mathsf T}\beta,
+$$
+
+$\exp(\beta_k)$ is an adjusted odds ratio.
+
+#### Continuous predictor
+
+> "Holding `OTHER COVARIATES` fixed, each `D`-`X UNIT` increase in `X` was associated with `OR = exp(D*BETA)` times the odds of `EVENT`, corresponding to `PERCENT`% `HIGHER/LOWER` odds."
+
+#### Binary or categorical predictor
+
+> "After adjusting for `COVARIATES`, the odds of `EVENT` for `EXPOSED/GROUP K` were `OR` times the odds for `REFERENCE GROUP` (95% CI: `LOWER` to `UPPER`)."
+
+#### Evidence sentence
+
+> "Because the 95% CI for the odds ratio `EXCLUDES/INCLUDES` 1, the data `PROVIDE/DO NOT PROVIDE` evidence of an adjusted association at the 0.05 level."
+
+Odds are $p/(1-p)$, not probabilities. An OR of 2 does not mean twice the risk. If the outcome is rare, an OR may approximate a risk ratio, but label it an OR.
+
+### Logistic interaction
+
+For exposure $X$, modifier $Z$, and $XZ$:
+
+> "Among `Z = 0`, the adjusted exposure OR was $\exp(\beta_X)$; among `Z = 1`, it was $\exp(\beta_X+\beta_{XZ})$. The interaction OR $\exp(\beta_{XZ})$ is the ratio of these two odds ratios."
+
+For collaborators, response-scale probabilities or risk differences at representative covariate profiles are usually clearer than a ratio of odds ratios.
+
+### Probit regression
+
+For $\Phi^{-1}\{P(Y=1\mid X)\}=X^{\mathsf T}\beta$:
+
+> "A one-unit increase in `X` shifts the latent Normal response index by `BETA`, holding `COVARIATES` fixed. Because this is not an odds ratio, we report the resulting change in predicted probability from `P0` to `P1` at `COVARIATE PROFILE`."
+
+Do not exponentiate a probit coefficient and call it an OR.
+
+### Log-binomial and modified-Poisson risk models
+
+If a binary-outcome model directly specifies $\log\{P(Y=1\mid X)\}=X^{\mathsf T}\beta$, then $\exp(\beta_k)$ is a risk ratio:
+
+> "Holding `COVARIATES` fixed, the estimated risk of `EVENT` for `GROUP A` was `RR` times the risk for `GROUP B`, corresponding to a `PERCENT`% `HIGHER/LOWER` risk."
+
+A modified-Poisson analysis uses the same log-mean interpretation with sandwich SEs. Confirm that the model targets risk rather than an event rate before writing "risk ratio."
+
+### Standardized predicted probability
+
+> "If every study participant were assigned `EXPOSURE LEVEL`, the model-standardized probability of `EVENT` would be `RISK`, averaging over the study covariate distribution."
+
+> "The standardized risk difference comparing `A` with `B` was `RD` percentage points, and the standardized risk ratio was `RR`."
+
+State the population over which standardization was performed.
+
+## 7. Count and rate GLMs
+
+### Poisson model with exposure offset
+
+For
+
+$$
+\log E(Y_i\mid X_i)=X_i^{\mathsf T}\beta+\log(e_i),
+$$
+
+$e_i$ is exposure and $\exp(\beta_k)$ is a rate ratio.
+
+> **Rate-ratio template:** "After adjusting for `COVARIATES` and accounting for `EXPOSURE TIME` through an offset, the incidence rate of `EVENT` for `GROUP A` was `RR` times that for `REFERENCE GROUP`, corresponding to a `PERCENT`% `HIGHER/LOWER` rate."
+
+> **Continuous-predictor template:** "For each `D`-unit increase in `X`, the adjusted `EVENT` rate was multiplied by $\exp(D\beta_X)$, holding `COVARIATES` fixed."
+
+Without an exposure offset, $\exp(\beta)$ is a mean count ratio, not automatically a rate ratio.
+
+### Negative-binomial model
+
+> "The negative-binomial coefficient has the same adjusted rate-ratio interpretation as the Poisson coefficient because the models use the same log mean and offset. The negative-binomial model additionally allows residual variance to exceed the mean."
+
+If the coefficient is stable but the CI widens, write:
+
+> "Accounting for extra-Poisson variation changed uncertainty more than the estimated rate ratio: the point estimate was similar, while the wider CI indicates that Poisson inference was too optimistic."
+
+### Quasi-Poisson model
+
+> "The quasi-Poisson model retains the same fitted log-rate interpretation as Poisson but rescales uncertainty using the estimated dispersion. Likelihood-based AIC and ordinary likelihood-ratio tests are not available."
+
+### Frequency counts
+
+Frequency weights reconstruct replicated observations. They are not exposure offsets:
+
+> "The frequency weight tells the model how many patients have this covariate-response pattern; it does not convert a count into a rate."
+
+## 8. Marginal models and GEE
+
+BIOS 767 defines marginal models as models for population averages: the marginal mean conditions on covariates, not on random effects or other responses. The working association is modeled separately from the mean.
+
+### Identity-link GEE
+
+> "At the population level and after adjusting for `COVARIATES`, mean `OUTCOME` differed by `BETA` `Y UNITS` for `CONTRAST`."
+
+### Logistic GEE
+
+> "At the population level, the adjusted odds of `EVENT` were `OR` times as high for `GROUP A` as for `GROUP B` (robust 95% CI: `LOWER` to `UPPER`)."
+
+### Log-link count GEE
+
+> "At the population level, the adjusted `EVENT` rate under `GROUP A` was `RR` times the rate under `GROUP B`, accounting for within-cluster association through GEE."
+
+### Working correlation and sandwich SE
+
+> "The exchangeable working correlation assumes one common within-cluster association for estimation. The reported sandwich SE is asymptotically robust to misspecification of that working correlation if the mean model is correct and the number of independent clusters is adequate."
+
+Do not interpret the working correlation as the treatment effect. Standard GEE with incomplete outcomes generally needs MCAR unless weighting, imputation, or another valid missingness method is used.
+
+## 9. Generalized linear mixed models
+
+For
+
+$$
+g\{E(Y_{ij}\mid b_i)\}=x_{ij}^{\mathsf T}\beta+z_{ij}^{\mathsf T}b_i,
+$$
+
+the fixed effects are subject- or cluster-specific because they condition on $b_i$.
+
+### Logistic GLMM
+
+> "Comparing two otherwise similar observations with the same subject/cluster random effect, `GROUP A` had `OR` times the odds of `EVENT` as `GROUP B`, after adjusting for `COVARIATES`."
+
+Do not call this a population-average OR. Odds ratios are noncollapsible, so a GEE OR and GLMM OR can differ even without confounding. The course approximation for a logistic random-intercept model is
+
+$$
+\beta_{\mathrm{PA}}\approx\frac{\beta_{\mathrm{SS}}}{\sqrt{1+0.346\sigma_b^2}},
+$$
+
+which is an approximation, not a conversion identity.
+
+### Poisson or negative-binomial GLMM
+
+> "Conditional on the `SUBJECT/CLUSTER` random effect and holding `COVARIATES` fixed, the `EVENT` rate for `GROUP A` was `RR` times the rate for `GROUP B`."
+
+For a log-link random-intercept model with $b_i\sim N(0,\sigma_b^2)$ independent of covariates,
+
+$$
+E(Y\mid X)=\exp(X^{\mathsf T}\beta+\sigma_b^2/2)
+$$
+
+apart from any exposure offset. Marginalization shifts the intercept but leaves nonintercept log-rate slopes unchanged when the random-effect variance is constant. Do not use the logistic attenuation formula for this log-link case.
+
+### GLMM variance component
+
+> "The estimated random-intercept variance `VARIANCE` represents residual heterogeneity among `SUBJECTS/CLUSTERS` on the `LOG-ODDS/LOG-RATE` scale after adjustment."
+
+For nonlinear mixed models, an outcome-scale ICC generally requires a model-specific definition; do not automatically use the Gaussian ICC formula.
+
+## 10. Ordinal, nominal, and staged outcomes
+
+### Proportional-odds model
+
+First write the order from worst to best and verify the package direction.
+
+If the model is
+
+$$
+\log\frac{P(Y\le k\mid X)}{P(Y>k\mid X)}
+=\alpha_k+X^{\mathsf T}\beta,
+$$
+
+then a positive $\beta$ means greater odds of being in a lower category.
+
+> "Holding `COVARIATES` fixed, `GROUP A` had `OR` times the cumulative odds of being at or below any response cutoff compared with `GROUP B`. Because categories were ordered from `WORST` to `BEST`, an OR `ABOVE/BELOW` 1 indicates generally `WORSE/BETTER` outcomes."
+
+The proportional-odds assumption says the same $\beta$ applies to every cumulative split. Cut-points $\alpha_k$ are thresholds, not exposure effects. Never exponentiate a cut-point and label it the treatment OR.
+
+If software models $P(Y>k)$ instead, reverse the direction language.
+
+### Proportional-odds interaction
+
+> "The cumulative treatment OR among `MODIFIER = 0` was $\exp(\beta_T)$ and among `MODIFIER = 1` was $\exp(\beta_T+\beta_{TM})$. The interaction tests whether treatment shifts the ordinal distribution differently across modifier levels."
+
+### Multinomial logit
+
+For outcome reference category $r$:
+
+> "Holding `COVARIATES` fixed, a one-unit increase in `X` multiplied the odds of being in outcome category `K` rather than reference category `R` by `RRR = exp(BETA_K)`."
+
+This is sometimes called a relative risk ratio, but it is a ratio of category odds. Each nonreference outcome category has its own coefficient.
+
+### Continuation-ratio model
+
+> "Among participants who reached stage `K`, `GROUP A` had `OR` times the odds of progressing beyond stage `K` rather than stopping there, compared with `GROUP B`."
+
+A shared-slope continuation-ratio model assumes the predictor has the same conditional effect at every stage. A stage interaction relaxes that assumption.
+
+## 11. Transition models
+
+BIOS 767 defines a transition model through the conditional distribution of the current response given past responses and covariates. Its coefficient is history-conditional, not population-average and not random-effect-conditional.
+
+For a first-order binary transition model,
+
+$$
+\operatorname{logit}\{P(Y_{ij}=1\mid Y_{i,j-1},X_{ij})\}
+=X_{ij}^{\mathsf T}\beta+\alpha Y_{i,j-1},
+$$
+
+use:
+
+> **Covariate template:** "Among observations with the same previous response and covariates, `CONTRAST` was associated with `OR` times the odds of the current event."
+
+> **Persistence template:** "Holding current covariates fixed, a subject with the event at the previous visit had $\exp(\alpha)$ times the odds of the event at the current visit compared with a subject without the previous event."
+
+If an exposure interacts with lagged outcome:
+
+> "The exposure OR was $\exp(\beta_X)$ after a previous nonevent and $\exp(\beta_X+\beta_{XH})$ after a previous event; the interaction tests whether exposure effects depend on recent response history."
+
+State the Markov order and how the first observation and missing histories were handled.
+
+## 12. Zero-inflated and hurdle models
+
+These models have two distinct coefficient systems. Interpret both.
+
+### Zero-inflated count model
+
+> **Zero component:** "The zero-inflation OR compares the odds of membership in the always-zero latent state for `CONTRAST`, under the software's stated coding."
+
+> **Count component:** "Among observations in the count-susceptible state, the expected count/rate for `GROUP A` was `RATIO` times that for `GROUP B`, holding count-model covariates fixed."
+
+The susceptible state is latent, so be cautious about giving it a literal biological label.
+
+### Hurdle model
+
+> **Occurrence component:** "`GROUP A` had `OR` times the odds of any event versus zero events."
+
+> **Positive-count component:** "Among observations with at least one event, the expected positive count/rate was multiplied by `RATIO` for `CONTRAST`."
+
+Do not combine the two component coefficients into one overall effect without marginalizing the full model.
+
+## 13. Inference and evidence wording
+
+### Confidence interval excludes the null
+
+> "The 95% CI `EXCLUDES 0/EXCLUDES 1`, providing evidence that `SCIENTIFIC CONTRAST` differs from the null at the 0.05 level."
+
+### Confidence interval includes the null
+
+> "The 95% CI `INCLUDES 0/INCLUDES 1`, so the data do not provide sufficient evidence of `SCIENTIFIC CONTRAST` at the 0.05 level. The interval remains compatible with effects ranging from `LOWER SCIENTIFIC EFFECT` to `UPPER SCIENTIFIC EFFECT`."
+
+Do not write "there is no effect" solely because $p>0.05$.
+
+### Joint or omnibus test
+
+> "The joint test of `TERMS` had `TEST STATISTIC`, `DF` degrees of freedom, and $p=`P`, providing `EVIDENCE/INSUFFICIENT EVIDENCE` that `TRAJECTORIES/FACTOR LEVELS/INTERACTIONS` differ somewhere."
+
+A significant joint interaction test does not identify which time or subgroup contrast differs; follow with prespecified contrasts and multiplicity control.
+
+### Comparing point estimates across models
+
+> "The estimated effect was similar across `MODELS`, suggesting robustness of the mean contrast, while `SE/CI/P-VALUE` changed because the models made different variance, dependence, or dispersion assumptions."
+
+Do not compare models only by whether one p-value crosses 0.05.
+
+## 14. Causal, associational, and predictive language
+
+### Randomized treatment
+
+> "Because treatment was randomized, this coefficient estimates the intention-to-treat effect of assignment among enrolled participants, subject to missing outcomes, nonadherence, interference, and model assumptions."
+
+### Baseline observational predictor
+
+> "This is a covariate-adjusted association and should not be interpreted causally because unmeasured confounding and model dependence remain possible."
+
+### Time-varying predictor
+
+> "This coefficient is a conditional association. If prior outcomes affect the time-varying predictor, ordinary adjustment can mix within- and between-subject information and can introduce time-varying confounding."
+
+### Random forest or other prediction model
+
+Random forests do not provide regression coefficients with LM/GLM interpretations.
+
+> **Performance template:** "On held-out data, the model had AUC `AUC`, indicating `POOR/MODEST/GOOD` discrimination; sensitivity `SENSITIVITY` and specificity `SPECIFICITY` describe the selected classification threshold."
+
+> **Importance template:** "`VARIABLE` ranked highly by permutation importance, meaning that disrupting it reduced predictive performance. Importance does not give effect direction, statistical significance, or a causal effect."
+
+Training-set performance is optimistic. Cross-validation used for tuning and a truly untouched test set used for final evaluation answer different questions.
+
+## 15. Exam-speed templates
+
+| Situation | Copy-ready sentence |
+|---|---|
+| LM continuous predictor | "Holding `COVARIATES` fixed, each `D`-unit increase in `X` was associated with a `VALUE`-unit `INCREASE/DECREASE` in mean `Y`." |
+| LM binary predictor | "Adjusted mean `Y` was `VALUE` units `HIGHER/LOWER` in `GROUP A` than `GROUP B`." |
+| Treatment x time in LM/LMM | "The treatment trajectory changed by `VALUE` units per `TIME UNIT` more/less than control; this is the between-group slope difference." |
+| Logistic GLM | "Adjusted odds of `EVENT` were `OR` times as high in `A` as `B` (95% CI `L` to `U`)." |
+| Log-link binary GLM | "Adjusted risk of `EVENT` was `RR` times as high in `A` as `B` (95% CI `L` to `U`)." |
+| Logistic GEE | "At the population level, adjusted odds of `EVENT` were `OR` times as high in `A` as `B`." |
+| Logistic GLMM | "Conditional on the subject/cluster random effect, adjusted odds of `EVENT` were `OR` times as high in `A` as `B`." |
+| Poisson/NB with offset | "After accounting for exposure, the adjusted event rate in `A` was `RR` times the rate in `B`." |
+| Poisson/NB GEE | "At the population level, the adjusted event rate in `A` was `RR` times the rate in `B`." |
+| Poisson/NB GLMM | "Conditional on the cluster random effect, the adjusted event rate in `A` was `RR` times the rate in `B`." |
+| Proportional odds | "`A` had `OR` times the common cumulative odds of a `LOWER/HIGHER` response category than `B`, under the stated outcome direction." |
+| Multinomial logit | "A one-unit increase in `X` multiplied the odds of category `K` versus reference category `R` by `RATIO`." |
+| Transition model | "Given the previous response and current covariates, `A` had `OR` times the odds of the current event as `B`." |
+| Random-intercept variance | "Residual baseline outcome levels varied across clusters, with random-intercept variance `VAR` on the model scale." |
+| Nonsignificant result | "The data do not provide sufficient evidence of an association; the CI remains compatible with `SCIENTIFIC RANGE`." |
+
+## 16. Final pre-submission checklist
+
+- Did I name the outcome event and its favorable/unfavorable direction?
+- Did I state the comparison and reference level?
+- Did I use the requested unit or a meaningful $d$-unit contrast?
+- Did I identify mean, odds, risk, count, or rate correctly?
+- If I exponentiated, did the link justify it?
+- Did I say population-average for GEE, conditional for GLMM, and history-conditional for a transition model?
+- If an interaction is present, did I interpret the appropriate sum or contrast rather than an isolated main effect?
+- For time, did I state the origin, unit, and whether it is continuous or categorical?
+- For a count rate, did I confirm an exposure offset was used?
+- For an ordinal model, did I verify category order, cumulative-logit direction, and slope rather than cut-point rows?
+- Did I convert ratios below 1 to percent lower correctly?
+- Did I distinguish odds from probability and OR from risk ratio?
+- Did I include a 95% CI and avoid equating nonsignificance with no effect?
+- Did I use causal wording only when the design and assumptions justify it?
+- Did I state the most relevant caveat without burying the scientific conclusion?
+
+## 17. Common wording failures
+
+| Avoid | Replace with |
+|---|---|
+| "The outcome increases by 50% because OR = 1.50." | "The odds are 50% higher; report predicted risks if a probability contrast is desired." |
+| "Treatment has no effect because $p=0.08$." | "There is insufficient evidence at 0.05; report the CI and compatible effect range." |
+| "The interaction is the treatment slope." | "The interaction is the treatment-control difference in slopes; add it to the reference slope for the treatment slope." |
+| "Holding random effects fixed" for GEE | "At the population level." |
+| "Population-average OR" for a logistic GLMM | "Conditional subject/cluster-specific OR." |
+| "Rate ratio" without exposure | "Mean count ratio," unless exposure is modeled through an offset. |
+| "Random-effect variance is a mean difference." | "It quantifies residual heterogeneity on the model scale." |
+| "Variable importance shows treatment works." | "Importance shows predictive contribution, not direction or causality." |
+| "AIC proves the better scientific model." | "AIC compares expected relative fit for models fitted to the same outcome/data; scientific estimand and assumptions still govern choice." |
+
+## 18. Source references
+
+### Course source
+
+- `/Users/wenbinwu/Documents/UNC/26Spring/BIOS767/Lecture-Notes/BIOS-767-Part-022.pdf`, PDF pp. 24-35 (course slides 24-29): recap of longitudinal models; nonlinear models can yield different coefficient interpretations; marginal models target population averages; mixed-effects models characterize individual heterogeneity and conditional responses; transition models condition on response history.
+
+### Exam-solution sources
+
+- `resources/previous-exams/applied-student-solutions/2025_Joyce/Joyce_2025_applied_exam.Rmd` and its annotated companion: LMM slopes and interactions, Poisson/negative-binomial GLMM rate ratios, GEE population-average effects, logistic ORs, proportional odds, random forest interpretation, and scientific caveats.
+- `resources/previous-exams/applied-codex-solutions/applied-exams/applied-2019-solution.Rmd`: LMM/GEE time interactions, logistic GLMM versus GEE, random intercepts/slopes, and proportional odds.
+- `resources/previous-exams/applied-codex-solutions/applied-exams/applied-2020-solution.Rmd`: partial correlations, repeated/clustered analyses, and scientific synthesis.
+- `resources/previous-exams/applied-codex-solutions/applied-exams/applied-2021-solution.Rmd`: Poisson, quasi-Poisson, zero-inflated negative binomial, logistic interactions, LMM variance components, and dyadic GEE.
+- `resources/previous-exams/applied-codex-solutions/applied-exams/applied-2023-solution.Rmd`: logistic/probit models, IPW and multiple imputation, LMM trajectories and contrasts, and predictive-model performance.
+- `resources/previous-exams/applied-codex-solutions/applied-exams/applied-2024-solution.Rmd`: censored longitudinal outcomes, logistic and continuation-ratio models, LM/LMM comparisons, and prediction versus causal claims.
+- `resources/previous-exams/applied-codex-solutions/applied-exams/applied-2025-solution.Rmd`: stepped-wedge count models, LMM/GEE comparison, measurement error, ordinal regression, logistic treatment effects, and random-forest limitations.

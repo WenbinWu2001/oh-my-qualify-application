@@ -13,6 +13,8 @@ $$
 \delta=\beta_1^{(1)}-\beta_1^{(0)}.
 $$
 
+Here $N$ is the required total number of participants across both groups—not the number per group—with $N_1$ assigned to group 1 and $N_0$ assigned to group 0. This is the required sample size before inflation for expected dropout or nonadherence.
+
 The null is $H_0:\delta=0$ against a two-sided alternative.
 
 ## Planning model
@@ -104,6 +106,8 @@ Use simulation when the analysis includes nonlinear time, GLMM/GEE estimation, i
    \operatorname{MCSE}=
    \sqrt{\frac{\widehat{\mathrm{Power}}(1-\widehat{\mathrm{Power}})}{B}}.
    $$
+
+Here $p_b$ is the p-value from applying the planned hypothesis test to simulated dataset $b$. The Monte Carlo standard error (MCSE) measures the simulation uncertainty in $\widehat{\mathrm{Power}}$ from using a finite number $B$ of simulated datasets.
 
 *Slide source: `BIOS-767-Part-022.pdf`, slides 11-23.*
 

@@ -97,7 +97,7 @@ str(nlme::Orthodont)
 
 ## 5. Fit
 
-The manual assumes these packages are already installed. Each analysis chapter loads its own dependencies with `library()`; the inventory below records versions without conditional package-existence logic.
+Each analysis chapter loads its required dependencies with `library()`. The inventory below records installed versions and marks optional packages that are unavailable, so this reference page remains renderable on a partial installation.
 
 ```{r}
 manual_packages <- c(
@@ -109,12 +109,18 @@ manual_packages <- c(
   "broom", "broom.mixed", "modelsummary"
 )
 
-# packageVersion(package) returns the installed version; vapply() repeats this with a fixed output type.
+# requireNamespace() checks availability; packageVersion() records versions without attaching packages.
 package_versions <- data.frame(
   package = manual_packages,
   version = vapply(
     manual_packages,
-    function(p) as.character(utils::packageVersion(p)),
+    function(p) {
+      if (requireNamespace(p, quietly = TRUE)) {
+        as.character(utils::packageVersion(p))
+      } else {
+        "not installed"
+      }
+    },
     character(1)
   )
 )

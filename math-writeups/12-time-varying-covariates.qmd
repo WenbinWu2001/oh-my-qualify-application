@@ -11,8 +11,8 @@ Time-varying covariates can describe within-person change, but stochastic covari
 
 ## Covariate types
 
-- Time-stationary: $X_{ij}=X_i$.
-- Systematic time-varying: determined by design, such as scheduled period or randomized crossover treatment.
+- Time-stationary: $X_{ij}=X_i$ (i.e., remains unchanged across time $j$).
+- Systematic time-varying: determined by design *a priori* and unrelated to the longitudinal response, such as scheduled period or randomized crossover treatment.
 - Stochastic time-varying: evolves randomly, such as behavior, biomarker, or exposure.
 
 *Slide source: `BIOS-767-Part-021.pdf`, slides 3-10.*
@@ -34,14 +34,16 @@ $$
 
 or an appropriately specified history model. This is automatic for fixed-by-design covariates but may fail for stochastic covariates. *Slide source: `BIOS-767-Part-021.pdf`, slides 11-15.*
 
-An external/exogenous covariate satisfies
+An *external/exogenous* covariate satisfies
 
 $$
 f(X_{i,j+1}\mid X_{i1:j},Y_{i1:j})
 =f(X_{i,j+1}\mid X_{i1:j}).
 $$
 
-If future exposure responds to current outcome, the exposure is endogenous. Adjusting only for its current value can bias even associational mean parameters because the covariate history contains information about the response. *Slide source: `BIOS-767-Part-021.pdf`, slides 16-20.*
+In other words, future covariates (exposure) are not predicted by history and current outcome. If future covariates respond to current outcome, the exposure is *endogenous*.
+In the regression, pairing $Y_{ij}$ only with its concurrent covariate $X_{ij}$, while ignoring the covariate history $X_{i1},\ldots,X_{i,j-1}$, can bias even associational mean-parameter estimates because that history contains information about the response.
+*Slide source: `BIOS-767-Part-021.pdf`, slides 16-20.*
 
 ## Within- and between-subject decomposition
 

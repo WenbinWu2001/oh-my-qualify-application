@@ -2,7 +2,7 @@
 
 **Course provenance.** I took **BIOS767: Longitudinal Data Analysis** in Spring 2026. The course materials form the main backbone of this repository, supplemented by the cited notes, assignments, and external references.
 
-> [**Practical analysis roadmap**](roadmap.qmd) — Route a real-data exam problem from outcome and estimand through modeling, missingness, inference, diagnostics, sensitivity analysis, and reporting.
+> [**Practical analysis roadmap**](references/roadmap.qmd) — Route a real-data exam problem from outcome and estimand through modeling, missingness, inference, diagnostics, sensitivity analysis, and reporting.
 
 Each chapter is self-contained and sources `_common.R`. Render the project from this directory so relative paths and the shared setup resolve correctly.
 
@@ -85,6 +85,12 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 
 ## Reference
 
+### [roadmap.qmd](references/roadmap.qmd)
+
+- A 60-second route from outcome scale and objective to estimand, model class, dependence structure, inference, diagnostics, and reporting.
+- Outcome-first and question-signal lookup tables linking to the matching R workflow and mathematical companion.
+- Model-selection, missingness, sensitivity-analysis, and applied-exam cross-check rules.
+
 ### [A0-setup-packages-data.qmd](references/A0-setup-packages-data.qmd)
 
 - One-shot installation of every package used by the manual and available applied-exam solutions.
@@ -102,11 +108,11 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 
 ### [A2-interpretation-cheatsheet.qmd](references/A2-interpretation-cheatsheet.qmd)
 
-- Population-averaged, subject-specific, and transition-model estimands.
-- GEE–GLMM attenuation relationships under logit, probit, and identity links.
-- Interpretation of fixed effects, variance components, ICCs, working correlations, and scale parameters.
-- Interaction effects, profile contrasts, estimable functions, and multiplicity-adjusted comparisons with `emmeans`.
-- Common interpretation traps involving nonlinear links, random effects, offsets, and prediction scales.
+- Copy-ready scientific interpretation templates for LM, Gaussian marginal models, LMM, GLM, GEE, GLMM, ordinal/nominal models, transition models, and two-part count models.
+- Mean differences, odds/risk/rate ratios, time slopes, interactions, random effects, ICCs, and standardized probabilities.
+- Population-average, subject/cluster-specific, and response-history-conditional estimands.
+- Calibrated confidence-interval language, causal versus associational wording, and prediction-versus-effect distinctions.
+- An exam-speed template table, final checklist, and common wording corrections.
 
 ### [A3-packages.qmd](references/A3-packages.qmd)
 

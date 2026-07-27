@@ -71,7 +71,7 @@ Then $e^{\beta_{k\ell}}$ is the relative-risk ratio for category $k$ versus $1$ 
 
 ## Shared-random-effect joint model 
 
-Joint modeling is useful when repeated outcomes are scientifically linked because it estimates outcome-specific covariate effects while accounting for their within-subject cross-outcome dependence.
+Joint modeling is useful when *two or more distinct outcome variables are measured* on the same subjects, often repeatedly, because it estimates outcome-specific covariate effects while accounting for their within-subject cross-outcome dependence. Repeated measurements of only one outcome instead form an ordinary longitudinal mixed model, not a joint-response model.
 
 For two outcomes on possibly different scales,
 
@@ -119,7 +119,7 @@ Report the precise comparison encoded by the link:
 
 - Use proportional odds when categories are ordered and a common cumulative-logit effect, $\beta_k=\beta$ for $k=1,\ldots,K-1$, is defensible. Use partial proportional odds for selective violations. 
 - Use generalized logits when ordering is absent or scientifically inappropriate. 
-- Use shared-random-effect models when several repeated outcomes are scientifically linked and their latent dependence is itself of interest.
+- Use a shared-random-effect joint model *when two or more distinct outcome variables are measured* on the same subjects, often repeatedly, and their cross-outcome latent dependence is scientifically relevant.
 
 ## External cross-check
 

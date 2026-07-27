@@ -17,7 +17,6 @@ library(pbkrtest)
 library(influence.ME)
 library(DHARMa)
 library(performance)
-library(see)
 library(MASS)
 library(dplyr)
 library(ggplot2)
@@ -149,8 +148,12 @@ plot(dh)
 DHARMa::testDispersion(dh)
 DHARMa::testZeroInflation(dh)
 
-# check_model(model) assembles standardized diagnostic panels; see provides the plotting backend.
-performance::check_model(count_glmm)
+# check_model(model) uses see as an optional plotting backend; retain a numeric fallback when absent.
+if (requireNamespace("see", quietly = TRUE)) {
+  performance::check_model(count_glmm)
+} else {
+  performance::check_overdispersion(count_glmm)
+}
 ```
 
 ## 8. Caveats

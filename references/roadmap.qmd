@@ -1,5 +1,5 @@
 ---
-title: "Practical Problem-Solving Roadmap"
+title: "Practical Analysis Roadmap"
 format:
   html:
     toc: true
@@ -43,7 +43,7 @@ flowchart TD
   C --> D["8-10. Estimate/compare → infer/contrast<br/>→ diagnose/sensitivity/report"]
 ```
 
-Before modeling, verify coding, denominators, visit ordering, the number of independent units, observations per unit, and whether repeated rows are measurements of one outcome or distinct outcomes. [R workflow: EDA and data structure](analysis-in-r/01-eda-descriptive.qmd) · [Mathematics: longitudinal foundations](math-writeups/01-foundations-mvn-ml-reml.qmd)
+Before modeling, verify coding, denominators, visit ordering, the number of independent units, observations per unit, and whether repeated rows are measurements of one outcome or distinct outcomes. [R workflow: EDA and data structure](../analysis-in-r/01-eda-descriptive.qmd) · [Mathematics: longitudinal foundations](../math-writeups/01-foundations-mvn-ml-reml.qmd)
 
 ## Outcome-first lookup {#roadmap-outcome-first}
 
@@ -51,16 +51,16 @@ The table chooses the response distribution and link. If observations are depend
 
 | Outcome | First model to consider | Escalate or redirect when | Start here |
 |---|---|---|---|
-| Approximately Gaussian continuous | Gaussian linear model; for repeated data, a Gaussian marginal model or LMM | Heteroscedasticity, nonlinear time, irregular timing, or complex covariance | [R workflow](analysis-in-r/03-linear-mixed-models.qmd) · [Mathematics](math-writeups/03-gaussian-marginal-models.qmd) |
-| Positive or right-skewed continuous | Scientifically justified transformation, lognormal model, or **Gamma model with log link** | Skew persists, variance grows with the mean, or zeros require a separate mechanism | [R workflow](analysis-in-r/05-glm-review.qmd) · [Mathematics](math-writeups/06-generalized-linear-models.qmd) |
-| Binary or binomial | Logistic or probit GLM; GEE or GLMM for dependence | Separation, sparse cells, repeated outcomes, or clustering | [R workflow](analysis-in-r/05-glm-review.qmd) · [Mathematics](math-writeups/06-generalized-linear-models.qmd) |
-| Nominal categorical | Generalized-logit multinomial model | Rows repeat within a unit: use marginal or random-effect dependence | [R workflow](analysis-in-r/05-glm-review.qmd) · [Mathematics](math-writeups/09-ordinal-nominal-joint-models.qmd) |
-| Ordinal | Cumulative-logit proportional-odds model | Use partial proportional odds for selected violations; use ordinal GEE or an ordinal mixed model for dependence | [R workflow](analysis-in-r/05-glm-review.qmd) · [Mathematics](math-writeups/09-ordinal-nominal-joint-models.qmd) |
-| Count or rate | Poisson log-linear model; include $\log(\text{exposure})$ as an offset for rates | Diagnose extra-Poisson variation; consider negative binomial, zero-inflated, or hurdle models for overdispersion or excess zeros | [R workflow](analysis-in-r/06-glmm.qmd) · [Mathematics](math-writeups/08-generalized-linear-mixed-multilevel.qmd) |
-| Multiple distinct outcomes | MANOVA for a continuous response vector, or outcome-specific models joined by shared random effects | Outcomes have different scales or links, repeated timing, or scientific interest in cross-outcome dependence | [R workflow](analysis-in-r/08-multivariate-testing-pca.qmd) · [Mathematics](math-writeups/09-ordinal-nominal-joint-models.qmd) |
-| Censored or below a limit of detection | Censored likelihood, Tobit-type model, or censored longitudinal mixed model | Detection limits vary, censoring is informative, or the latent distribution is doubtful | [R workflow for sensitivity concepts](analysis-in-r/07-missing-data.qmd) · [Mathematics for likelihood concepts](math-writeups/10-missing-data.qmd) |
+| Approximately Gaussian continuous | Gaussian linear model; for repeated data, a Gaussian marginal model or LMM | Heteroscedasticity, nonlinear time, irregular timing, or complex covariance | [R workflow](../analysis-in-r/03-linear-mixed-models.qmd) · [Mathematics](../math-writeups/03-gaussian-marginal-models.qmd) |
+| Positive or right-skewed continuous | Scientifically justified transformation, lognormal model, or **Gamma model with log link** | Skew persists, variance grows with the mean, or zeros require a separate mechanism | [R workflow](../analysis-in-r/05-glm-review.qmd) · [Mathematics](../math-writeups/06-generalized-linear-models.qmd) |
+| Binary or binomial | Logistic or probit GLM; GEE or GLMM for dependence | Separation, sparse cells, repeated outcomes, or clustering | [R workflow](../analysis-in-r/05-glm-review.qmd) · [Mathematics](../math-writeups/06-generalized-linear-models.qmd) |
+| Nominal categorical | Generalized-logit multinomial model | Rows repeat within a unit: use marginal or random-effect dependence | [R workflow](../analysis-in-r/05-glm-review.qmd) · [Mathematics](../math-writeups/09-ordinal-nominal-joint-models.qmd) |
+| Ordinal | Cumulative-logit proportional-odds model | Use partial proportional odds for selected violations; use ordinal GEE or an ordinal mixed model for dependence | [R workflow](../analysis-in-r/05-glm-review.qmd) · [Mathematics](../math-writeups/09-ordinal-nominal-joint-models.qmd) |
+| Count or rate | Poisson log-linear model; include $\log(\text{exposure})$ as an offset for rates | Diagnose extra-Poisson variation; consider negative binomial, zero-inflated, or hurdle models for overdispersion or excess zeros | [R workflow](../analysis-in-r/06-glmm.qmd) · [Mathematics](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) |
+| Multiple distinct outcomes | MANOVA for a continuous response vector, or outcome-specific models joined by shared random effects | Outcomes have different scales or links, repeated timing, or scientific interest in cross-outcome dependence | [R workflow](../analysis-in-r/08-multivariate-testing-pca.qmd) · [Mathematics](../math-writeups/09-ordinal-nominal-joint-models.qmd) |
+| Censored or below a limit of detection | Censored likelihood, Tobit-type model, or censored longitudinal mixed model | Detection limits vary, censoring is informative, or the latent distribution is doubtful | [R workflow for sensitivity concepts](../analysis-in-r/07-missing-data.qmd) · [Mathematics for likelihood concepts](../math-writeups/10-missing-data.qmd) |
 | Time to event | Survival model matched to censoring, competing risks, and recurrent-event structure | **Outside this manual:** do not force survival data into a longitudinal GLM | Outside-manual branch |
-| Prediction or high-dimensional analysis | Prespecified training, tuning, validation, and calibration workflow | Clustered/repeated rows require resampling by the independent unit; clinical use requires external validation | [R workflow for PCA](analysis-in-r/08-multivariate-testing-pca.qmd) · [External playbook off-ramp](https://qual-exam-template-book.xinyichen12138.chatgpt.site/template-book) |
+| Prediction or high-dimensional analysis | Prespecified training, tuning, validation, and calibration workflow | Clustered/repeated rows require resampling by the independent unit; clinical use requires external validation | [R workflow for PCA](../analysis-in-r/08-multivariate-testing-pca.qmd) · [External playbook off-ramp](https://qual-exam-template-book.xinyichen12138.chatgpt.site/template-book) |
 
 ::: {.callout-warning title="Do not collapse by reflex"}
 Collapsing an ordinal response to binary discards information and changes the response likelihood and estimand. AIC or BIC from the collapsed binary outcome is not directly comparable with AIC or BIC from the original ordinal outcome.
@@ -81,15 +81,15 @@ The **independent unit** determines clustering, resampling, influence deletion, 
 
 | Scientific target or dependence | Model class and coefficient meaning | Paired references |
 |---|---|---|
-| Population-average effect | Marginal model or GEE; coefficients describe the population mean | [R workflow](analysis-in-r/04-marginal-models-gee.qmd) · [Mathematics](math-writeups/07-marginal-models-gee.qmd) |
-| Subject-specific trajectory, heterogeneity, BLUP, or cluster-specific effect | LMM or GLMM; coefficients condition on random effects and random effects describe heterogeneity | [R workflow](analysis-in-r/03-linear-mixed-models.qmd) · [Mathematics](math-writeups/04-linear-mixed-models.qmd) |
-| Effect conditional on response history | Transition model using lagged outcomes or response history; interpret conditionally on that history | [R workflow](analysis-in-r/06-glmm.qmd) · [Mathematics](math-writeups/11-transition-models.qmd) |
-| Dependence among distinct outcomes | MANOVA for a continuous vector or a joint-response/shared-random-effect model | [R workflow](analysis-in-r/08-multivariate-testing-pca.qmd) · [Mathematics](math-writeups/09-ordinal-nominal-joint-models.qmd) |
-| Marginal mean with covariance modeled directly | Gaussian marginal model; useful when population profiles and a structured covariance are primary | [R workflow](analysis-in-r/03-linear-mixed-models.qmd) · [Mathematics](math-writeups/03-gaussian-marginal-models.qmd) |
+| Population-average effect | Marginal model or GEE; coefficients describe the population mean | [R workflow](../analysis-in-r/04-marginal-models-gee.qmd) · [Mathematics](../math-writeups/07-marginal-models-gee.qmd) |
+| Subject-specific trajectory, heterogeneity, BLUP, or cluster-specific effect | LMM or GLMM; coefficients condition on random effects and random effects describe heterogeneity | [R workflow](../analysis-in-r/03-linear-mixed-models.qmd) · [Mathematics](../math-writeups/04-linear-mixed-models.qmd) |
+| Effect conditional on response history | Transition model using lagged outcomes or response history; interpret conditionally on that history | [R workflow](../analysis-in-r/06-glmm.qmd) · [Mathematics](../math-writeups/11-transition-models.qmd) |
+| Dependence among distinct outcomes | MANOVA for a continuous vector or a joint-response/shared-random-effect model | [R workflow](../analysis-in-r/08-multivariate-testing-pca.qmd) · [Mathematics](../math-writeups/09-ordinal-nominal-joint-models.qmd) |
+| Marginal mean with covariance modeled directly | Gaussian marginal model; useful when population profiles and a structured covariance are primary | [R workflow](../analysis-in-r/03-linear-mixed-models.qmd) · [Mathematics](../math-writeups/03-gaussian-marginal-models.qmd) |
 
 Repeated measurements of **one** outcome are not automatically a joint-response problem. Use a joint-response model when there are two or more distinct outcome processes whose cross-outcome dependence matters.
 
-With a Gaussian identity link, the LMM fixed effects describe both the marginal mean $E(Y_i\mid X_i)=X_i\beta$ and the conditional mean at $b_i=0$. With nonlinear links, integrating over random effects changes the mean: GEE and GLMM coefficients generally target different estimands and have different magnitudes. Do not describe one as a mere robustness version of the other. [Interpretation reference](references/A2-interpretation-cheatsheet.qmd)
+With a Gaussian identity link, the LMM fixed effects describe both the marginal mean $E(Y_i\mid X_i)=X_i\beta$ and the conditional mean at $b_i=0$. With nonlinear links, integrating over random effects changes the mean: GEE and GLMM coefficients generally target different estimands and have different magnitudes. Do not describe one as a mere robustness version of the other. [Interpretation reference](A2-interpretation-cheatsheet.qmd)
 
 ## Missingness and censoring {#roadmap-missingness-censoring}
 
@@ -113,7 +113,7 @@ Missingness mechanisms generally cannot be proven from observed data. State the 
 | Limit of detection or censoring | Use the inequality/event information in a censored likelihood or justified sensitivity method; do not recode as ordinary missing |
 | Structural absence or truncation by death | Redefine the estimand and target population; a post-death outcome is undefined, not merely unobserved |
 
-For MI, fit the **same analysis model in every imputed dataset** and pool the same estimable function with Rubin's rules. For IPW or MI, diagnose weights or imputations—not only the final outcome model. [R workflow](analysis-in-r/07-missing-data.qmd) · [Mathematics](math-writeups/10-missing-data.qmd)
+For MI, fit the **same analysis model in every imputed dataset** and pool the same estimable function with Rubin's rules. For IPW or MI, diagnose weights or imputations—not only the final outcome model. [R workflow](../analysis-in-r/07-missing-data.qmd) · [Mathematics](../math-writeups/10-missing-data.qmd)
 
 ## Mean and time specification {#roadmap-mean-time}
 
@@ -126,7 +126,7 @@ For MI, fit the **same analysis model in every imputed dataset** and pool the sa
 | Confounding | Retain prespecified confounders regardless of their individual p-values. Selection by p-value does not establish confounding control. |
 | Time-varying covariates | Distinguish systematic from stochastic covariates; separate within- and between-unit components when relevant; consider histories and lags. Endogenous covariates and time-varying confounding affected by prior treatment require more than ordinary regression. |
 
-[R workflow: EDA and profiles](analysis-in-r/01-eda-descriptive.qmd) · [Mathematics: Gaussian means](math-writeups/03-gaussian-marginal-models.qmd) · [Mathematics: time-varying covariates](math-writeups/12-time-varying-covariates.qmd)
+[R workflow: EDA and profiles](../analysis-in-r/01-eda-descriptive.qmd) · [Mathematics: Gaussian means](../math-writeups/03-gaussian-marginal-models.qmd) · [Mathematics: time-varying covariates](../math-writeups/12-time-varying-covariates.qmd)
 
 ## Model selection and estimation {#roadmap-selection-estimation}
 
@@ -140,7 +140,7 @@ For MI, fit the **same analysis model in every imputed dataset** and pool the sa
 6. Refit the final Gaussian model under **REML**.
 7. Perform cluster-aware diagnostics.
 
-This order follows BIOS767 Part 9, slides 7–8: reduce the mean first, then check whether the preliminary covariance remains suitable. [R workflow](analysis-in-r/03-linear-mixed-models.qmd) · [Mathematics](math-writeups/03-gaussian-marginal-models.qmd)
+This order follows BIOS767 Part 9, slides 7–8: reduce the mean first, then check whether the preliminary covariance remains suitable. [R workflow](../analysis-in-r/03-linear-mixed-models.qmd) · [Mathematics](../math-writeups/03-gaussian-marginal-models.qmd)
 
 ### Test and criterion rules {#roadmap-test-criteria}
 
@@ -162,7 +162,7 @@ A standard likelihood-ratio test requires:
 - identical fixed-effect designs for REML comparisons; and
 - an interior null parameter.
 
-For a variance-zero boundary hypothesis, do not automatically use an ordinary chi-square reference. Use a justified mixture distribution, restricted LRT, or parametric bootstrap. [Inference and diagnostic mathematics](math-writeups/05-inference-diagnostics.qmd) · [R reference](references/A1-inference-diagnostics.qmd)
+For a variance-zero boundary hypothesis, do not automatically use an ordinary chi-square reference. Use a justified mixture distribution, restricted LRT, or parametric bootstrap. [Inference and diagnostic mathematics](../math-writeups/05-inference-diagnostics.qmd) · [R reference](A1-inference-diagnostics.qmd)
 
 Use **LRT** for nested comparable likelihood models; **Wald, Kenward–Roger, or Satterthwaite** procedures for prespecified fixed-effect contrasts and small-sample LMM inference; **AIC/BIC** for comparable likelihoods fitted to the same response data; **QIC/CIC** for comparable GEE candidates; and **cross-validation or external validation** for prediction. Record model-selection uncertainty when the final inferential model was chosen from the same data.
 
@@ -180,7 +180,7 @@ Inference comes after the estimand and model are defined.
 | Family of contrasts | Define the family and apply a justified multiplicity adjustment |
 | Covariance estimate | State whether uncertainty is model-based or robust/sandwich and why |
 
-[R workflow: repeated-measures contrasts](analysis-in-r/02-rm-anova-manova.qmd) · [Mathematics](math-writeups/02-repeated-measures-anova-manova.qmd) · [Interpretation reference](references/A2-interpretation-cheatsheet.qmd)
+[R workflow: repeated-measures contrasts](../analysis-in-r/02-rm-anova-manova.qmd) · [Mathematics](../math-writeups/02-repeated-measures-anova-manova.qmd) · [Interpretation reference](A2-interpretation-cheatsheet.qmd)
 
 ## Diagnostics by model class {#roadmap-diagnostics}
 
@@ -194,7 +194,7 @@ Inference comes after the estimand and model are defined.
 | Missing-data analysis | Positivity and weight tails; influence of truncation/stabilization; imputation-chain convergence; observed-versus-imputed plausibility; sensitivity to MAR/MNAR assumptions |
 | Prediction | Leakage prevention; resampling by independent unit; tuning inside resampling; discrimination or error; calibration; temporal and external validation |
 
-[R diagnostics](references/A1-inference-diagnostics.qmd) · [Mathematics](math-writeups/05-inference-diagnostics.qmd)
+[R diagnostics](A1-inference-diagnostics.qmd) · [Mathematics](../math-writeups/05-inference-diagnostics.qmd)
 
 ## Sensitivity and reporting checklist {#roadmap-sensitivity-reporting}
 
@@ -227,17 +227,17 @@ The local 2022 applied-exam PDF is unavailable, so no 2022 coverage is inferred.
 
 | Question signal | Method | R code/workflow | Mathematics |
 |---|---|---|---|
-| “Load, audit, describe, plot trajectories, or inspect missingness” | Data and cluster audit; EDA | [Setup and data](references/A0-setup-packages-data.qmd) · [EDA](analysis-in-r/01-eda-descriptive.qmd) | [MVN and longitudinal foundations](math-writeups/01-foundations-mvn-ml-reml.qmd) |
-| “Balanced repeated continuous outcomes; profile hypotheses” | RM-ANOVA/MANOVA or profile analysis | [RM-ANOVA/MANOVA](analysis-in-r/02-rm-anova-manova.qmd) | [RM-ANOVA/MANOVA](math-writeups/02-repeated-measures-anova-manova.qmd) |
-| “Continuous repeated outcome; marginal profile or structured covariance” | Gaussian marginal model | [Linear/marginal mixed workflows](analysis-in-r/03-linear-mixed-models.qmd) | [Gaussian marginal models](math-writeups/03-gaussian-marginal-models.qmd) |
-| “Individual trajectories, heterogeneity, BLUPs, or nested clusters” | LMM | [Linear mixed models](analysis-in-r/03-linear-mixed-models.qmd) | [Linear mixed models](math-writeups/04-linear-mixed-models.qmd) |
-| “Independent binary, count/rate, Gamma, or ordinal response” | GLM or ordinal likelihood model | [GLM review](analysis-in-r/05-glm-review.qmd) | [Generalized linear models](math-writeups/06-generalized-linear-models.qmd) |
-| “Population-average correlated response” | GEE | [Marginal models/GEE](analysis-in-r/04-marginal-models-gee.qmd) | [GEE](math-writeups/07-marginal-models-gee.qmd) |
-| “Subject-specific binary/count outcome or multilevel generalized response” | GLMM | [GLMM](analysis-in-r/06-glmm.qmd) | [GLMM and multilevel models](math-writeups/08-generalized-linear-mixed-multilevel.qmd) |
-| “Ordinal, nominal, or multiple distinct outcomes” | Cumulative/generalized logits, MANOVA, or joint response | [GLM/ordinal](analysis-in-r/05-glm-review.qmd) · [Multivariate workflow](analysis-in-r/08-multivariate-testing-pca.qmd) | [Ordinal, nominal, and joint response](math-writeups/09-ordinal-nominal-joint-models.qmd) |
-| “Effect given the previous response” | Transition model | [Transition implementation](analysis-in-r/06-glmm.qmd) | [Transition models](math-writeups/11-transition-models.qmd) |
-| “Dropout, incomplete covariates, IPW, MI, or MNAR sensitivity” | Ignorable likelihood, IPW, MI, or sensitivity model | [Missing data](analysis-in-r/07-missing-data.qmd) | [Missing-data mathematics](math-writeups/10-missing-data.qmd) |
-| “Time-varying exposure, within/between effect, history, or lag” | Decomposition, history model, distributed lag, or causal g-method | [GEE covariate workflow](analysis-in-r/04-marginal-models-gee.qmd) | [Time-varying covariates](math-writeups/12-time-varying-covariates.qmd) |
-| “Which test, contrast, diagnostic, or interpretation?” | Estimable contrast and model-class diagnostic | [Inference/diagnostics](references/A1-inference-diagnostics.qmd) · [Interpretation](references/A2-interpretation-cheatsheet.qmd) | [Inference and diagnostics](math-writeups/05-inference-diagnostics.qmd) |
-| “Plan sample size or simulation power” | Design- and estimand-matched analytical or simulation calculation | [Repeated-measures power workflow](analysis-in-r/02-rm-anova-manova.qmd) | [Sample size and power](math-writeups/13-sample-size-power.qmd) |
-| “Which package or data reader?” | Reproducible setup | [Setup/data](references/A0-setup-packages-data.qmd) · [Package map](references/A3-packages.qmd) | Match the method-specific companion above |
+| “Load, audit, describe, plot trajectories, or inspect missingness” | Data and cluster audit; EDA | [Setup and data](A0-setup-packages-data.qmd) · [EDA](../analysis-in-r/01-eda-descriptive.qmd) | [MVN and longitudinal foundations](../math-writeups/01-foundations-mvn-ml-reml.qmd) |
+| “Balanced repeated continuous outcomes; profile hypotheses” | RM-ANOVA/MANOVA or profile analysis | [RM-ANOVA/MANOVA](../analysis-in-r/02-rm-anova-manova.qmd) | [RM-ANOVA/MANOVA](../math-writeups/02-repeated-measures-anova-manova.qmd) |
+| “Continuous repeated outcome; marginal profile or structured covariance” | Gaussian marginal model | [Linear/marginal mixed workflows](../analysis-in-r/03-linear-mixed-models.qmd) | [Gaussian marginal models](../math-writeups/03-gaussian-marginal-models.qmd) |
+| “Individual trajectories, heterogeneity, BLUPs, or nested clusters” | LMM | [Linear mixed models](../analysis-in-r/03-linear-mixed-models.qmd) | [Linear mixed models](../math-writeups/04-linear-mixed-models.qmd) |
+| “Independent binary, count/rate, Gamma, or ordinal response” | GLM or ordinal likelihood model | [GLM review](../analysis-in-r/05-glm-review.qmd) | [Generalized linear models](../math-writeups/06-generalized-linear-models.qmd) |
+| “Population-average correlated response” | GEE | [Marginal models/GEE](../analysis-in-r/04-marginal-models-gee.qmd) | [GEE](../math-writeups/07-marginal-models-gee.qmd) |
+| “Subject-specific binary/count outcome or multilevel generalized response” | GLMM | [GLMM](../analysis-in-r/06-glmm.qmd) | [GLMM and multilevel models](../math-writeups/08-generalized-linear-mixed-multilevel.qmd) |
+| “Ordinal, nominal, or multiple distinct outcomes” | Cumulative/generalized logits, MANOVA, or joint response | [GLM/ordinal](../analysis-in-r/05-glm-review.qmd) · [Multivariate workflow](../analysis-in-r/08-multivariate-testing-pca.qmd) | [Ordinal, nominal, and joint response](../math-writeups/09-ordinal-nominal-joint-models.qmd) |
+| “Effect given the previous response” | Transition model | [Transition implementation](../analysis-in-r/06-glmm.qmd) | [Transition models](../math-writeups/11-transition-models.qmd) |
+| “Dropout, incomplete covariates, IPW, MI, or MNAR sensitivity” | Ignorable likelihood, IPW, MI, or sensitivity model | [Missing data](../analysis-in-r/07-missing-data.qmd) | [Missing-data mathematics](../math-writeups/10-missing-data.qmd) |
+| “Time-varying exposure, within/between effect, history, or lag” | Decomposition, history model, distributed lag, or causal g-method | [GEE covariate workflow](../analysis-in-r/04-marginal-models-gee.qmd) | [Time-varying covariates](../math-writeups/12-time-varying-covariates.qmd) |
+| “Which test, contrast, diagnostic, or interpretation?” | Estimable contrast and model-class diagnostic | [Inference/diagnostics](A1-inference-diagnostics.qmd) · [Interpretation](A2-interpretation-cheatsheet.qmd) | [Inference and diagnostics](../math-writeups/05-inference-diagnostics.qmd) |
+| “Plan sample size or simulation power” | Design- and estimand-matched analytical or simulation calculation | [Repeated-measures power workflow](../analysis-in-r/02-rm-anova-manova.qmd) | [Sample size and power](../math-writeups/13-sample-size-power.qmd) |
+| “Which package or data reader?” | Reproducible setup | [Setup/data](A0-setup-packages-data.qmd) · [Package map](A3-packages.qmd) | Match the method-specific companion above |
