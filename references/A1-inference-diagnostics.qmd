@@ -92,6 +92,8 @@ Fixed-effect tests require the intended estimable function and denominator-df me
 
 ### Gaussian marginal and conditional residuals
 
+The normal Q--Q plots below are specific to Gaussian model diagnostics. Do not apply them to Pearson or deviance residuals from non-Gaussian GLMs or GLMMs.
+
 ```{r}
 # fitted/resid are conditional on BLUPs; predict(re.form = NA) sets random effects to zero.
 lmm_diag <- data.frame(

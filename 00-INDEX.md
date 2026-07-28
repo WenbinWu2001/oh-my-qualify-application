@@ -91,6 +91,7 @@ Each chapter is self-contained and sources `_common.R`. Render the project from 
 
 - A compact four-panel residual, influence, and leverage screen for ordinary GLMs.
 - Deviance and Pearson residuals, Cook's distance, leverage, and practical investigation thresholds.
+- An explicit warning against normal residual Q--Q plots for non-Gaussian GLMs.
 - Guidance on nonnormal GLM residuals, repeated-data limitations, and cluster-level follow-up.
 
 ## Accompanying Mathematics

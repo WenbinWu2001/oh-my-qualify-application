@@ -104,6 +104,10 @@ Inspect the rows flagged by several measures and compare refitted estimates if t
 head(glm_diag[order(glm_diag$cook, decreasing = TRUE), ], 5)
 ```
 
+::: {.callout-warning title="Normal Q--Q plots are for Gaussian models"}
+Use a normal residual Q--Q plot to assess the Gaussian error assumption in a linear model, or carefully chosen residuals from a Gaussian linear mixed model. **Do not apply this diagnostic to Pearson or deviance residuals from binary, count, ordinal, or other non-Gaussian GLMs. Those residuals are not expected to be normal.** For GLMMs, use [simulation-based residual diagnostics](06-glmm.qmd#diagnostics).
+:::
+
 ## 5. What to look for
 
 | Pattern | Possible concern | Next check |
@@ -113,7 +117,7 @@ head(glm_diag[order(glm_diag$cook, decreasing = TRUE), ], 5)
 | Large Cook's distance and leverage | Coefficient sensitivity to one covariate pattern | Verify the row and compare estimates with and without it |
 | Several flagged rows from one subject | Cluster-level influence or unmodeled dependence | Use GEE/GLMM and delete or perturb the subject, not isolated visits |
 
-For binary and count GLMs, ordinary residuals are discrete and are not expected to follow a normal distribution. A standard normal Q--Q plot is therefore not a primary diagnostic. For GLMMs, use [simulation-based residuals](06-glmm.qmd#diagnostics) in addition to convergence, dispersion, and random-effect checks.
+For binary and count GLMs, ordinary residuals are discrete and are not expected to follow a normal distribution. Use residual-versus-fitted, dispersion, calibration, and influence checks rather than a normal residual Q--Q plot.
 
 ## 6. Caveats
 

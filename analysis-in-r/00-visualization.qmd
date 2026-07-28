@@ -207,6 +207,8 @@ Plot adjusted predictions from the fitted model when the question asks about an 
 
 ## 8. Diagnostics
 
+The normal Q--Q plot in this section applies to the Gaussian linear model `fit`. **Do not use a normal residual Q--Q plot for a non-Gaussian GLM.**
+
 ```{r}
 diagnostic_dat <- tibble(
   fitted = fitted(fit),

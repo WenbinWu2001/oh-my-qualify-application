@@ -141,6 +141,7 @@ See [Residual diagnostics for GLMs](09-diagnostics-residual.qmd) for a compact f
 ## 8. Caveats
 
 - These fits ignore repeated-subject correlation; use GEE for population-average inference or GLMM for a conditional random-effects model.
+- Do not use a normal Q--Q plot of Pearson or deviance residuals to assess a non-Gaussian GLM; those residuals are not expected to be normal.
 - Pearson/deviance dispersion ratios are screens, not formal universal tests, and repeated dependence itself inflates them.
 - Quasi-likelihood models have no ordinary likelihood; do not compare their AIC with likelihood fits.
 - Exponentiation is link-specific: odds ratios for logit, rate ratios for log, and no ratio interpretation for identity.
